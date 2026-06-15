@@ -1,0 +1,10 @@
+node_modules
+dist
+dist-ssr
+*.local
+.DS_Store
+.vite
+
+# Local Claude state
+.claude/scheduled_tasks.lock
+.claude/settings.local.json

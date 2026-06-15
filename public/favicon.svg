@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#a8852c">
+  <path d="M12 21 C11 16 11.1 9 12 3.5 C12.9 9 13 16 12 21 Z"/>
+  <path d="M12 21 C11.1 16.5 11.2 11 12 7 C12.8 11 12.9 16.5 12 21 Z" transform="rotate(28 12 21)"/>
+  <path d="M12 21 C11.1 16.5 11.2 11 12 7 C12.8 11 12.9 16.5 12 21 Z" transform="rotate(-28 12 21)"/>
+  <path d="M12 21 C11.2 17 11.3 13 12 10.5 C12.7 13 12.8 17 12 21 Z" transform="rotate(56 12 21)"/>
+  <path d="M12 21 C11.2 17 11.3 13 12 10.5 C12.7 13 12.8 17 12 21 Z" transform="rotate(-56 12 21)"/>
+  <path d="M12 21 C11.3 18 11.4 15 12 13 C12.6 15 12.7 18 12 21 Z" transform="rotate(84 12 21)"/>
+  <path d="M12 21 C11.3 18 11.4 15 12 13 C12.6 15 12.7 18 12 21 Z" transform="rotate(-84 12 21)"/>
+  <path d="M11.4 20.8 L12.6 20.8 L12 23.7 Z"/>
+</svg>
