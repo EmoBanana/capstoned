@@ -1,3 +1,5 @@
+'use client'
+
 import { useState, type FormEvent } from 'react'
 import { Logo, Button, Field, Input, Badge } from '../components/ui'
 
