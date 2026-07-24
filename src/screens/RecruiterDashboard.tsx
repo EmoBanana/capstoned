@@ -47,7 +47,7 @@ const PROGRAMS: Program[] = [
   {
     id: 'p2',
     title: 'Mobile Growth Analytics Track',
-    commitment: 'Semester Break Sprint · 1 Month',
+    commitment: 'Full-time · 4 weeks',
     status: 'open',
     applicants: 32,
     cap: 40,

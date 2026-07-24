@@ -20,7 +20,7 @@ import {
 /*  applicant caps and guaranteed-interview SLAs.                      */
 /* ------------------------------------------------------------------ */
 
-type Commitment = 'Semester Break Sprint' | 'Concurrent Study Track'
+type Intensity = 'Part-time' | 'Full-time'
 
 type Track = {
   id: string
@@ -28,7 +28,7 @@ type Track = {
   monogram: string
   reliability: number
   title: string
-  commitment: Commitment
+  intensity: Intensity
   commitmentLine: string
   skills: string[]
   applicants: number
@@ -45,8 +45,8 @@ const TRACKS: Track[] = [
     monogram: 'TB',
     reliability: 98,
     title: 'Frontend Architecture Mentorship',
-    commitment: 'Concurrent Study Track',
-    commitmentLine: '10 hrs/week · Concurrent with Studies',
+    intensity: 'Part-time',
+    commitmentLine: '10 hrs/week · 12 weeks',
     skills: ['React', 'TypeScript', 'Design Systems'],
     applicants: 50,
     cap: 50,
@@ -60,8 +60,8 @@ const TRACKS: Track[] = [
     monogram: 'GA',
     reliability: 93,
     title: 'Civil-Tech Data Pipeline Sprint',
-    commitment: 'Semester Break Sprint',
-    commitmentLine: 'Full-time · 1-Month Sprint',
+    intensity: 'Full-time',
+    commitmentLine: 'Full-time · 4 weeks',
     skills: ['Python', 'ETL', 'GIS'],
     applicants: 50,
     cap: 50,
@@ -75,8 +75,8 @@ const TRACKS: Track[] = [
     monogram: 'ML',
     reliability: 88,
     title: 'Risk & Credit Modelling Track',
-    commitment: 'Concurrent Study Track',
-    commitmentLine: '8 hrs/week · Concurrent with Studies',
+    intensity: 'Part-time',
+    commitmentLine: '8 hrs/week · 10 weeks',
     skills: ['SQL', 'Statistics', 'Pandas'],
     applicants: 32,
     cap: 40,
@@ -90,8 +90,8 @@ const TRACKS: Track[] = [
     monogram: 'ST',
     reliability: 71,
     title: 'Mobile Payments QA Automation',
-    commitment: 'Semester Break Sprint',
-    commitmentLine: 'Full-time · 6-Week Sprint',
+    intensity: 'Full-time',
+    commitmentLine: 'Full-time · 6 weeks',
     skills: ['Appium', 'Kotlin', 'CI/CD'],
     applicants: 12,
     cap: 35,
@@ -105,8 +105,8 @@ const TRACKS: Track[] = [
     monogram: 'MV',
     reliability: 90,
     title: 'Growth Experimentation & Analytics',
-    commitment: 'Concurrent Study Track',
-    commitmentLine: '6 hrs/week · Concurrent with Studies',
+    intensity: 'Part-time',
+    commitmentLine: '6 hrs/week · 8 weeks',
     skills: ['A/B Testing', 'SQL', 'Amplitude'],
     applicants: 28,
     cap: 30,
@@ -120,8 +120,8 @@ const TRACKS: Track[] = [
     monogram: 'SR',
     reliability: 82,
     title: 'Platform Integrations Mentorship',
-    commitment: 'Concurrent Study Track',
-    commitmentLine: '10 hrs/week · Concurrent with Studies',
+    intensity: 'Part-time',
+    commitmentLine: '10 hrs/week · 12 weeks',
     skills: ['Node.js', 'REST APIs', 'Webhooks'],
     applicants: 19,
     cap: 45,
@@ -135,8 +135,8 @@ const TRACKS: Track[] = [
     monogram: 'MX',
     reliability: 95,
     title: 'Applied Machine Learning Sprint',
-    commitment: 'Semester Break Sprint',
-    commitmentLine: 'Full-time · 1-Month Sprint',
+    intensity: 'Full-time',
+    commitmentLine: 'Full-time · 4 weeks',
     skills: ['PyTorch', 'NLP', 'MLOps'],
     applicants: 44,
     cap: 48,
@@ -150,8 +150,8 @@ const TRACKS: Track[] = [
     monogram: 'SI',
     reliability: 77,
     title: 'Product Design Foundations Track',
-    commitment: 'Concurrent Study Track',
-    commitmentLine: '8 hrs/week · Concurrent with Studies',
+    intensity: 'Part-time',
+    commitmentLine: '8 hrs/week · 10 weeks',
     skills: ['Figma', 'UX Research', 'Prototyping'],
     applicants: 9,
     cap: 25,
@@ -165,8 +165,8 @@ const TRACKS: Track[] = [
     monogram: 'MB',
     reliability: 91,
     title: 'Cloud Security Engineering Sprint',
-    commitment: 'Semester Break Sprint',
-    commitmentLine: 'Full-time · 6-Week Sprint',
+    intensity: 'Full-time',
+    commitmentLine: 'Full-time · 6 weeks',
     skills: ['AWS', 'Terraform', 'IAM'],
     applicants: 38,
     cap: 42,
@@ -176,8 +176,8 @@ const TRACKS: Track[] = [
   },
 ]
 
-type FilterChip = 'All' | Commitment
-const FILTERS: FilterChip[] = ['All', 'Semester Break Sprint', 'Concurrent Study Track']
+type FilterChip = 'All' | Intensity
+const FILTERS: FilterChip[] = ['All', 'Part-time', 'Full-time']
 
 type SortKey = 'closing' | 'applicants' | 'fit'
 const SORTS: { key: SortKey; label: string }[] = [
@@ -240,7 +240,7 @@ function TrackCard({ track }: { track: Track }) {
             <div className="min-w-0">
               <TalentbankLogo className="text-[11px]" />
               <p className="mt-1.5 text-[11px] uppercase tracking-[0.08em] text-ink-faint">
-                {track.commitment === 'Semester Break Sprint' ? 'Break Sprint' : 'Concurrent Track'}
+                {track.intensity}
               </p>
             </div>
           ) : (
@@ -251,7 +251,7 @@ function TrackCard({ track }: { track: Track }) {
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-ink">{track.company}</p>
                 <p className="text-[11px] uppercase tracking-[0.08em] text-ink-faint">
-                  {track.commitment === 'Semester Break Sprint' ? 'Break Sprint' : 'Concurrent Track'}
+                  {track.intensity}
                 </p>
               </div>
             </>
@@ -343,7 +343,7 @@ export default function Marketplace() {
   const visible = useMemo<Track[]>(() => {
     const q = query.trim().toLowerCase()
     const filtered = TRACKS.filter((t) => {
-      const matchesFilter = filter === 'All' || t.commitment === filter
+      const matchesFilter = filter === 'All' || t.intensity === filter
       const matchesQuery =
         q === '' ||
         t.title.toLowerCase().includes(q) ||
@@ -380,7 +380,7 @@ export default function Marketplace() {
       <header className="mb-8">
         <Eyebrow>Student · Marketplace</Eyebrow>
         <h1 className="mt-3 max-w-3xl text-3xl font-black leading-tight tracking-tight text-ink sm:text-4xl">
-          Tracks open for your semester break
+          Tracks open now
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft sm:text-base">
           Apply based on your availability. Every track shows live seats and a guaranteed interview

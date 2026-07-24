@@ -375,7 +375,7 @@ export default function MatchReport() {
                     : 'Early job offer triggered.'}
                 </span>{' '}
                 {decision === 'extended'
-                  ? 'John has been invited to a second concurrent semester. Awaiting his acceptance.'
+                  ? 'John has been invited to continue for another cycle. Awaiting his acceptance.'
                   : 'A full-time graduate offer has been sent for review. Both parties are notified.'}
               </p>
             </div>

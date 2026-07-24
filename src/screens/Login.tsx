@@ -28,7 +28,7 @@ const ROLES: {
 ]
 
 const VALUE_PROPS: string[] = [
-  'Calendar-aligned mentorship tracks built around the semester.',
+  'Flexible tracks that set their own duration and weekly commitment.',
   'Live applicant counts and guaranteed interview windows.',
   'AI assessments both sides can see.',
 ]

@@ -12,7 +12,7 @@ describe('Marketplace', () => {
     render(<Marketplace />)
 
     expect(
-      screen.getByRole('heading', { name: /tracks open for your semester break/i })
+      screen.getByRole('heading', { name: /tracks open now/i })
     ).toBeInTheDocument()
 
     // Result-count line + one card per track.
@@ -23,15 +23,15 @@ describe('Marketplace', () => {
     expect(screen.getByText('TALENTBANK')).toBeInTheDocument()
   })
 
-  it('filters the grid via the commitment chips', async () => {
+  it('filters the grid via the intensity chips', async () => {
     const user = userEvent.setup()
     render(<Marketplace />)
 
-    await user.click(screen.getByRole('button', { name: 'Semester Break Sprint' }))
+    await user.click(screen.getByRole('button', { name: 'Full-time' }))
     expect(screen.getByText(/Showing 4 tracks/i)).toBeInTheDocument()
     expect(cardTitles()).toHaveLength(4)
 
-    await user.click(screen.getByRole('button', { name: 'Concurrent Study Track' }))
+    await user.click(screen.getByRole('button', { name: 'Part-time' }))
     expect(screen.getByText(/Showing 5 tracks/i)).toBeInTheDocument()
     expect(cardTitles()).toHaveLength(5)
 

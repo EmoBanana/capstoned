@@ -37,11 +37,8 @@ const STEPS: { n: number; label: string; tag: string }[] = [
   { n: 3, label: 'Deliverables & AI Checkpoints', tag: 'Scoring' },
 ]
 
-const AUDIENCE_OPTIONS: string[] = [
-  'Semester Break Sprint · 1 Month',
-  'Semester Break Sprint · 3 Months',
-  'Concurrent Study Track · Continuous',
-]
+const INTENSITY_OPTIONS = ['Part-time', 'Full-time'] as const
+type Intensity = (typeof INTENSITY_OPTIONS)[number]
 
 const COMPANY_NAME = 'Talentbank'
 
@@ -109,7 +106,8 @@ export default function TrackBuilder() {
   )
 
   // Step 2 — Commitment
-  const [audience, setAudience] = useState<string>(AUDIENCE_OPTIONS[2])
+  const [intensity, setIntensity] = useState<Intensity>('Part-time')
+  const [durationWeeks, setDurationWeeks] = useState<number>(12)
   const [weeklyHours, setWeeklyHours] = useState<number>(12)
   const [cap, setCap] = useState<number>(50)
   const [slaHours, setSlaHours] = useState<number>(48)
@@ -170,7 +168,10 @@ export default function TrackBuilder() {
   const goNext = () => setStep((s) => Math.min(STEPS.length, s + 1))
   const publish = () => setPublished(true)
 
-  const commitmentLine = `${audience.split(' · ')[1] ?? audience} · ${weeklyHours} hrs / week`
+  const commitmentLine =
+    intensity === 'Full-time'
+      ? `Full-time · ${durationWeeks} weeks`
+      : `${weeklyHours} hrs/week · ${durationWeeks} weeks`
 
   return (
     <Page width="max-w-6xl">
@@ -287,19 +288,31 @@ export default function TrackBuilder() {
                 desc="Set how much time mentees commit each week and how quickly you'll respond to applicants."
               />
               <div className="mt-6 space-y-5">
-                <Field label="Target Audience" htmlFor="audience" required>
-                  <Select
-                    id="audience"
-                    value={audience}
-                    onChange={(e) => setAudience(e.target.value)}
-                  >
-                    {AUDIENCE_OPTIONS.map((o) => (
-                      <option key={o} value={o}>
-                        {o}
-                      </option>
-                    ))}
-                  </Select>
-                </Field>
+                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <Field label="Format" htmlFor="intensity" required>
+                    <Select
+                      id="intensity"
+                      value={intensity}
+                      onChange={(e) => setIntensity(e.target.value as Intensity)}
+                    >
+                      {INTENSITY_OPTIONS.map((o) => (
+                        <option key={o} value={o}>
+                          {o}
+                        </option>
+                      ))}
+                    </Select>
+                  </Field>
+                  <Field label="Duration (weeks)" htmlFor="duration" hint="No fixed term">
+                    <Input
+                      id="duration"
+                      type="number"
+                      min={1}
+                      value={durationWeeks}
+                      onChange={(e) => setDurationWeeks(clampInt(e.target.value, 1, 104))}
+                      className="tabular-nums"
+                    />
+                  </Field>
+                </div>
 
                 <Field
                   label="Expected Weekly Hours"
@@ -590,7 +603,7 @@ export default function TrackBuilder() {
               </p>
 
               <div className="mt-4 flex flex-wrap gap-2">
-                <Badge tone="neutral">{audience.split(' · ')[0]}</Badge>
+                <Badge tone="neutral">{intensity}</Badge>
                 <Badge tone="gold">{commitmentLine}</Badge>
               </div>
 
