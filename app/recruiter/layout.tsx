@@ -51,15 +51,15 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
             </div>
           </div>
 
-          <nav className="hidden items-center gap-1.5 lg:flex">
+          <nav className="hidden items-center gap-7 lg:flex">
             {TABS.map((t) => (
               <Link
                 key={t.href}
                 href={t.href}
-                className={`border px-3.5 py-2 text-[13px] font-semibold rounded-[2px] transition-colors duration-150 ${
+                className={`border-b-2 px-1 py-2 text-sm transition-colors duration-150 ${
                   active(t.href)
-                    ? 'border-ink bg-ink text-cream'
-                    : 'border-line text-ink-soft hover:border-ink/40 hover:text-ink'
+                    ? 'border-gold font-semibold text-ink'
+                    : 'border-transparent text-ink-soft hover:text-ink'
                 }`}
               >
                 {t.label}
@@ -76,20 +76,22 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
                 void signOut()
                 router.push('/login')
               }}
-              className="border border-line px-3 py-2 text-xs font-semibold text-ink-soft rounded-[2px] transition-colors hover:border-ink hover:text-ink"
+              className="px-1 py-2 text-xs font-semibold text-ink-soft transition-colors hover:text-ink"
             >
               Sign out
             </button>
           </div>
         </div>
 
-        <div className="flex gap-1.5 overflow-x-auto border-t border-line px-4 py-2 lg:hidden">
+        <div className="flex gap-6 overflow-x-auto border-t border-line px-6 py-2 lg:hidden">
           {TABS.map((t) => (
             <Link
               key={t.href}
               href={t.href}
-              className={`whitespace-nowrap border px-3 py-1.5 text-xs font-semibold rounded-[2px] transition-colors ${
-                active(t.href) ? 'border-ink bg-ink text-cream' : 'border-line text-ink-soft'
+              className={`whitespace-nowrap border-b-2 px-1 py-1.5 text-xs transition-colors ${
+                active(t.href)
+                  ? 'border-gold font-semibold text-ink'
+                  : 'border-transparent text-ink-soft hover:text-ink'
               }`}
             >
               {t.label}
