@@ -1,16 +1,20 @@
 'use client'
 
+import { useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import type { Id } from '@/convex/_generated/dataModel'
-import { Page, Card, Badge, ProgressBar, Eyebrow } from '../components/ui'
+import { Page, Card, Badge, Button, ProgressBar, Eyebrow } from '../components/ui'
 import { CompanyLogo } from '../components/CompanyLogo'
 import { SkeletonGrid } from '../components/Skeleton'
+import { errorText } from '../components/errors'
 
 /* ------------------------------------------------------------------ */
-/*  Student · My Applications — live status of every track applied to.  */
+/*  Student · My Applications — live status + a real interview          */
+/*  negotiation once accepted.                                          */
 /* ------------------------------------------------------------------ */
 
+type Party = 'company' | 'candidate'
 type App = {
   id: string
   status: 'pending' | 'accepted' | 'declined'
@@ -20,6 +24,9 @@ type App = {
   note: string
   availability: string
   hoursPerWeek: number
+  interviewAt: number | null
+  interviewProposedBy: Party | null
+  interviewStatus: 'proposed' | 'confirmed' | null
   trackTitle: string
   org: string
   orgSlug: string
@@ -27,14 +34,74 @@ type App = {
 
 const STATUS_META: Record<App['status'], { label: string; tone: 'gold' | 'success' | 'neutral' }> = {
   pending: { label: 'Under review', tone: 'gold' },
-  accepted: { label: 'Interview scheduled', tone: 'success' },
+  accepted: { label: 'Interviewing', tone: 'success' },
   declined: { label: 'Not moving forward', tone: 'neutral' },
 }
 const matchTone = (v: number): 'success' | 'gold' | 'danger' => (v >= 75 ? 'success' : v >= 55 ? 'gold' : 'danger')
 
+const fmtWhen = (ms: number) =>
+  new Date(ms).toLocaleString(undefined, { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+const pad = (n: number) => String(n).padStart(2, '0')
+const toInput = (ms: number) => {
+  const d = new Date(ms)
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
+/** The candidate's side of the interview negotiation for an accepted app. */
+function InterviewPanel({ app, onAccept, onCounter }: { app: App; onAccept: () => void; onCounter: (ms: number) => Promise<unknown> }) {
+  const [countering, setCountering] = useState(false)
+  const [val, setVal] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const confirmed = app.interviewStatus === 'confirmed'
+  const iProposed = app.interviewStatus === 'proposed' && app.interviewProposedBy === 'candidate'
+  const theyProposed = app.interviewStatus === 'proposed' && app.interviewProposedBy === 'company'
+
+  const send = async () => {
+    const ms = new Date(val).getTime()
+    if (!ms || Number.isNaN(ms) || ms < Date.now()) { setError('Pick a future time.'); return }
+    setBusy(true)
+    setError(null)
+    try { await onCounter(ms); setCountering(false); setVal('') } catch (e) { setError(errorText(e)) } finally { setBusy(false) }
+  }
+
+  return (
+    <div className="mt-4 rounded-[2px] border border-gold/40 bg-gold-soft/40 px-3 py-3">
+      {app.interviewAt == null ? (
+        <p className="text-xs text-ink">Accepted — {app.org} will propose an interview time shortly.</p>
+      ) : confirmed ? (
+        <p className="text-xs font-semibold text-success-ink">✓ Interview confirmed · {fmtWhen(app.interviewAt)}</p>
+      ) : iProposed ? (
+        <p className="text-xs text-ink">You proposed <b>{fmtWhen(app.interviewAt)}</b> — waiting on {app.org} to confirm.</p>
+      ) : theyProposed && !countering ? (
+        <div>
+          <p className="text-xs text-ink">{app.org} proposed <b>{fmtWhen(app.interviewAt)}</b>.</p>
+          <div className="mt-2 flex gap-2">
+            <Button size="sm" onClick={onAccept}>Accept time</Button>
+            <Button size="sm" variant="secondary" onClick={() => { setCountering(true); setVal(toInput(app.interviewAt ?? Date.now())) }}>Can't make it</Button>
+          </div>
+        </div>
+      ) : (
+        <div>
+          <p className="mb-2 text-xs font-semibold text-ink">Propose a time that works for you</p>
+          <input type="datetime-local" value={val} min={toInput(Date.now())} onChange={(e) => setVal(e.target.value)} className="w-full border border-line-strong bg-cream px-2.5 py-1.5 text-xs text-ink rounded-[2px] focus:border-ink focus:outline-none" />
+          <div className="mt-2 flex items-center gap-2">
+            <Button size="sm" disabled={busy} onClick={send}>Send this time</Button>
+            <Button size="sm" variant="ghost" onClick={() => setCountering(false)}>Cancel</Button>
+            {error && <span className="text-[11px] font-medium text-danger">{error}</span>}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function StudentApplications() {
   const apps = useQuery(api.applications.mine) as App[] | undefined
   const withdraw = useMutation(api.applications.withdraw)
+  const confirmInterview = useMutation(api.applications.confirmInterview)
+  const proposeInterview = useMutation(api.applications.proposeInterview)
   const now = Date.now()
 
   const appliedLabel = (ms: number) => {
@@ -95,6 +162,14 @@ export default function StudentApplications() {
                   </p>
                 )}
 
+                {a.status === 'accepted' && (
+                  <InterviewPanel
+                    app={a}
+                    onAccept={() => void confirmInterview({ applicationId: a.id as Id<'applications'> })}
+                    onCounter={(ms) => proposeInterview({ applicationId: a.id as Id<'applications'>, at: ms })}
+                  />
+                )}
+
                 <div className="mt-auto flex items-center justify-between gap-3 pt-6 text-xs">
                   <span className="text-ink-faint">Applied {appliedLabel(a.appliedAt)}</span>
                   {a.status === 'pending' ? (
@@ -110,11 +185,9 @@ export default function StudentApplications() {
                         Withdraw
                       </button>
                     </div>
-                  ) : a.status === 'accepted' ? (
-                    <span className="font-semibold text-success-ink">✓ Interviewing</span>
-                  ) : (
+                  ) : a.status === 'declined' ? (
                     <span className="text-ink-faint">Closed</span>
-                  )}
+                  ) : null}
                 </div>
               </Card>
             )

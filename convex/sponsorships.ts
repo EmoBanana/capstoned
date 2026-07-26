@@ -5,6 +5,7 @@ import { getAuthUserId } from '@convex-dev/auth/server'
 import type { Id } from './_generated/dataModel'
 import type { QueryCtx, MutationCtx } from './_generated/server'
 import { recordEvent } from './reliability'
+import { notify } from './notifications'
 
 const TYPE = v.union(v.literal('milestone'), v.literal('period'))
 const COMMITMENT = v.union(v.literal('contract'), v.literal('priority-hiring'))
@@ -83,6 +84,9 @@ export const offer = mutation({
       status: 'offered' as const,
       createdAt: Date.now(),
     }
+    const candidate = await ctx.db.get(enrollment.candidateId)
+    await notify(ctx, candidate?.userId, 'micro-bond', `${fields.orgName} offered you a micro-bond: RM ${fields.amount.toLocaleString()}. Review and sign in My Mentorship.`, '/student/mentorship')
+
     if (existing) {
       await ctx.db.patch(existing._id, fields)
       return existing._id
@@ -111,6 +115,12 @@ export const sign = mutation({
       contractNo,
     })
     await recordEvent(ctx, 'candidate', s.candidateId, 2, 'Signed a micro-bond commitment')
+
+    const enrollment = await ctx.db.get(s.enrollmentId)
+    const track = enrollment ? await ctx.db.get(enrollment.trackId) : null
+    const org = track ? (await ctx.db.query('organizations').collect()).find((o) => o.slug === track.orgSlug) : null
+    await notify(ctx, org?.ownerUserId, 'micro-bond', `${signedName.trim()} signed the micro-bond contract (${contractNo}).`, '/recruiter/mentees')
+
     return contractNo
   },
 })

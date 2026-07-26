@@ -106,6 +106,10 @@ export default defineSchema({
     note: v.optional(v.string()),
     availability: v.optional(v.string()),
     hoursPerWeek: v.optional(v.number()),
+    // Interview scheduling — a real two-way negotiation once accepted.
+    interviewAt: v.optional(v.number()),
+    interviewProposedBy: v.optional(v.union(v.literal('company'), v.literal('candidate'))),
+    interviewStatus: v.optional(v.union(v.literal('proposed'), v.literal('confirmed'))),
   })
     .index('by_track', ['trackId'])
     .index('by_candidate', ['candidateId']),
@@ -181,4 +185,14 @@ export default defineSchema({
     reason: v.string(),
     createdAt: v.number(),
   }).index('by_subject', ['subjectKind', 'subjectId']),
+
+  // Per-user event feed surfaced by the header notification bell.
+  notifications: defineTable({
+    userId: v.id('users'),
+    kind: v.string(),
+    body: v.string(),
+    href: v.optional(v.string()),
+    read: v.boolean(),
+    createdAt: v.number(),
+  }).index('by_user', ['userId']),
 })

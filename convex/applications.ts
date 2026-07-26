@@ -3,9 +3,35 @@ import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 import type { QueryCtx, MutationCtx } from './_generated/server'
+import type { Doc } from './_generated/dataModel'
 import { recordEvent } from './reliability'
+import { notify } from './notifications'
+import { myOrg } from './organizations'
 
 const STATUS = v.union(v.literal('pending'), v.literal('accepted'), v.literal('declined'))
+
+const fmtWhen = (ms: number) =>
+  new Date(ms).toLocaleString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+
+/** The organization row for a track (by slug). */
+async function orgForTrack(ctx: MutationCtx, track: Doc<'tracks'>) {
+  return (await ctx.db.query('organizations').collect()).find((o) => o.slug === track.orgSlug) ?? null
+}
+
+/** Which party the caller is for an application: the owning company, the
+ *  applying candidate, or neither. Used to gate interview actions. */
+async function resolveParty(ctx: MutationCtx, app: Doc<'applications'>): Promise<'company' | 'candidate' | null> {
+  const userId = await getAuthUserId(ctx)
+  if (!userId) return null
+  const user = await ctx.db.get(userId)
+  if (user?.role === 'recruiter') {
+    const org = await myOrg(ctx)
+    const track = await ctx.db.get(app.trackId)
+    return org && track && track.orgSlug === org.slug ? 'company' : null
+  }
+  const cand = await myCandidate(ctx)
+  return cand && app.candidateId === cand._id ? 'candidate' : null
+}
 
 /** The signed-in user's own candidate profile, or null. No demo fallback. */
 async function myCandidate(ctx: QueryCtx | MutationCtx) {
@@ -42,7 +68,7 @@ export const apply = mutation({
     if (existing) return existing._id
 
     const now = Date.now()
-    return await ctx.db.insert('applications', {
+    const id = await ctx.db.insert('applications', {
       trackId,
       candidateId: candidate._id,
       status: 'pending',
@@ -53,6 +79,10 @@ export const apply = mutation({
       availability: availability ?? '',
       hoursPerWeek: hoursPerWeek ?? 0,
     })
+
+    const org = await orgForTrack(ctx, track)
+    await notify(ctx, org?.ownerUserId, 'application', `${candidate.name} applied to ${track.title} (${Math.round(matchScore)}% fit).`, '/recruiter/applicants')
+    return id
   },
 })
 
@@ -92,6 +122,9 @@ export const mine = query({
           note: a.note ?? '',
           availability: a.availability ?? '',
           hoursPerWeek: a.hoursPerWeek ?? 0,
+          interviewAt: a.interviewAt ?? null,
+          interviewProposedBy: a.interviewProposedBy ?? null,
+          interviewStatus: a.interviewStatus ?? null,
           trackTitle: track?.title ?? '—',
           org: track?.org ?? '',
           orgSlug: track?.orgSlug ?? '',
@@ -127,6 +160,12 @@ export const forOrg = query({
       .withIndex('by_track', (q) => q.eq('trackId', track._id))
       .collect()
 
+    const enrollments = await ctx.db
+      .query('enrollments')
+      .withIndex('by_track', (q) => q.eq('trackId', track._id))
+      .collect()
+    const enrolledCandidateIds = new Set(enrollments.map((e) => e.candidateId as string))
+
     const applicants = await Promise.all(
       apps.map(async (a) => {
         const c = await ctx.db.get(a.candidateId)
@@ -139,6 +178,10 @@ export const forOrg = query({
           note: a.note ?? '',
           availability: a.availability ?? '',
           hoursPerWeek: a.hoursPerWeek ?? 0,
+          interviewAt: a.interviewAt ?? null,
+          interviewProposedBy: a.interviewProposedBy ?? null,
+          interviewStatus: a.interviewStatus ?? null,
+          enrolled: enrolledCandidateIds.has(a.candidateId as string),
           name: c?.name ?? '—',
           university: c?.university ?? '',
           program: c?.program ?? '',
@@ -170,47 +213,75 @@ async function seedEnrollmentTasks(
   }
 }
 
+/**
+ * Recruiter decision on an applicant. Accepting does NOT create a mentee — it
+ * moves them to the interview stage and (with `interviewAt`) proposes a time.
+ * Enrollment happens later via `enroll`, after the interview. Declining just
+ * closes the application. Both notify the candidate.
+ */
 export const setStatus = mutation({
-  args: { applicationId: v.id('applications'), status: STATUS },
-  handler: async (ctx, { applicationId, status }) => {
+  args: { applicationId: v.id('applications'), status: STATUS, interviewAt: v.optional(v.number()) },
+  handler: async (ctx, { applicationId, status, interviewAt }) => {
     const app = await ctx.db.get(applicationId)
     if (!app) return
+    const track = await ctx.db.get(app.trackId)
+    const candidate = await ctx.db.get(app.candidateId)
 
-    if (status !== 'accepted') {
+    if (status === 'declined') {
+      await ctx.db.patch(applicationId, { status })
+      await notify(ctx, candidate?.userId, 'application', `${track?.org ?? 'A company'} isn't moving forward with your application to ${track?.title ?? 'a track'}.`, '/student/applications')
+      return
+    }
+
+    if (status === 'pending') {
       await ctx.db.patch(applicationId, { status })
       return
     }
 
-    const track = await ctx.db.get(app.trackId)
-
-    // Enforce the seat cap: an already-enrolled applicant (re-accept) is fine,
-    // but a NEW acceptance past the cap is rejected before anything changes.
-    const trackEnrollments = track
-      ? await ctx.db.query('enrollments').withIndex('by_track', (q) => q.eq('trackId', track._id)).collect()
-      : []
-    const already = trackEnrollments.find((e) => e.candidateId === app.candidateId)
-    if (track && !already && trackEnrollments.length >= track.cap) {
-      throw new ConvexError(`This track is at its seat cap of ${track.cap}. Close or expand it before accepting more.`)
+    // Accept → interview stage. Propose the time if given (company proposes).
+    const patch: Partial<Doc<'applications'>> = { status: 'accepted' }
+    if (interviewAt) {
+      patch.interviewAt = interviewAt
+      patch.interviewProposedBy = 'company'
+      patch.interviewStatus = 'proposed'
     }
-
-    await ctx.db.patch(applicationId, { status })
+    await ctx.db.patch(applicationId, patch)
 
     // Reliability: interviewing within SLA is a positive signal for the org.
-    const org = track ? (await ctx.db.query('organizations').collect()).find((o) => o.slug === track.orgSlug) : null
+    const org = track ? await orgForTrack(ctx, track) : null
     if (org) {
       const onTime = Date.now() <= app.slaDueAt
-      await recordEvent(
-        ctx,
-        'organization',
-        org._id,
-        onTime ? 1 : -8,
-        onTime ? 'Interviewed an applicant within SLA' : 'Missed the interview SLA',
-      )
+      await recordEvent(ctx, 'organization', org._id, onTime ? 1 : -8, onTime ? 'Interviewed an applicant within SLA' : 'Missed the interview SLA')
     }
 
-    // Accepting creates a REAL enrollment (unless one already exists) so the
-    // mentee + mentorship flow is driven by actual recruiter action, not seed.
-    if (already || !track) return
+    const when = interviewAt ? ` for ${fmtWhen(interviewAt)}` : ''
+    await notify(ctx, candidate?.userId, 'interview', `${track?.org ?? 'A company'} wants to interview you for ${track?.title ?? 'a track'}${when}. Review the time in My Applications.`, '/student/applications')
+  },
+})
+
+/**
+ * Recruiter enrolls an accepted, interviewed applicant as a mentee — THIS is
+ * where the mentorship (enrollment + starter tasks) is created, not on accept.
+ */
+export const enroll = mutation({
+  args: { applicationId: v.id('applications') },
+  handler: async (ctx, { applicationId }) => {
+    const app = await ctx.db.get(applicationId)
+    if (!app) throw new ConvexError('Application not found')
+    if (app.status !== 'accepted') throw new ConvexError('Interview the applicant before enrolling them')
+    const track = await ctx.db.get(app.trackId)
+    if (!track) throw new ConvexError('Track not found')
+    const org = await myOrg(ctx)
+    if (!org || org.slug !== track.orgSlug) throw new ConvexError('That track belongs to another company')
+
+    const trackEnrollments = await ctx.db
+      .query('enrollments')
+      .withIndex('by_track', (q) => q.eq('trackId', track._id))
+      .collect()
+    if (trackEnrollments.some((e) => e.candidateId === app.candidateId)) return
+    if (trackEnrollments.length >= track.cap) {
+      throw new ConvexError(`This track is at its seat cap of ${track.cap}. Close or expand it before enrolling more.`)
+    }
 
     const recruiterId = await getAuthUserId(ctx)
     const recruiter = recruiterId ? await ctx.db.get(recruiterId) : null
@@ -226,5 +297,54 @@ export const setStatus = mutation({
       feedback: [],
     })
     await seedEnrollmentTasks(ctx, enrollmentId, track.milestones)
+
+    const candidate = await ctx.db.get(app.candidateId)
+    await notify(ctx, candidate?.userId, 'enrolled', `You're enrolled in ${track.title} at ${track.org} — your mentorship has started.`, '/student/mentorship')
+  },
+})
+
+/** Either party proposes (or counter-proposes) an interview time. */
+export const proposeInterview = mutation({
+  args: { applicationId: v.id('applications'), at: v.number() },
+  handler: async (ctx, { applicationId, at }) => {
+    const app = await ctx.db.get(applicationId)
+    if (!app) throw new ConvexError('Application not found')
+    const party = await resolveParty(ctx, app)
+    if (!party) throw new ConvexError('Not allowed')
+    if (at < Date.now()) throw new ConvexError('Pick a time in the future')
+
+    await ctx.db.patch(applicationId, { interviewAt: at, interviewProposedBy: party, interviewStatus: 'proposed' })
+
+    const track = await ctx.db.get(app.trackId)
+    const candidate = await ctx.db.get(app.candidateId)
+    if (party === 'company') {
+      await notify(ctx, candidate?.userId, 'interview', `${track?.org ?? 'A company'} proposed a new interview time: ${fmtWhen(at)}.`, '/student/applications')
+    } else {
+      const org = track ? await orgForTrack(ctx, track) : null
+      await notify(ctx, org?.ownerUserId, 'interview', `${candidate?.name ?? 'A candidate'} proposed a new interview time: ${fmtWhen(at)}.`, '/recruiter/applicants')
+    }
+  },
+})
+
+/** The party who did NOT last propose confirms the interview time. */
+export const confirmInterview = mutation({
+  args: { applicationId: v.id('applications') },
+  handler: async (ctx, { applicationId }) => {
+    const app = await ctx.db.get(applicationId)
+    if (!app) throw new ConvexError('Application not found')
+    const party = await resolveParty(ctx, app)
+    if (!party) throw new ConvexError('Not allowed')
+    if (!app.interviewAt || app.interviewStatus !== 'proposed') throw new ConvexError('No proposed time to confirm')
+    if (app.interviewProposedBy === party) throw new ConvexError('Waiting for the other party to respond to your proposal')
+
+    await ctx.db.patch(applicationId, { interviewStatus: 'confirmed' })
+
+    const track = await ctx.db.get(app.trackId)
+    const candidate = await ctx.db.get(app.candidateId)
+    const org = track ? await orgForTrack(ctx, track) : null
+    const whenText = fmtWhen(app.interviewAt)
+    // Confirm notifies BOTH sides so the calendar lands for everyone.
+    await notify(ctx, candidate?.userId, 'interview', `Interview confirmed with ${track?.org ?? 'the company'} for ${whenText}.`, '/student/applications')
+    await notify(ctx, org?.ownerUserId, 'interview', `Interview confirmed with ${candidate?.name ?? 'the candidate'} for ${whenText}.`, '/recruiter/applicants')
   },
 })

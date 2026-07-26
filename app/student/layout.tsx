@@ -7,6 +7,7 @@ import { useConvexAuth, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { Logo } from '@/src/components/ui'
 import ProfileMenu from '@/src/components/ProfileMenu'
+import NotificationBell from '@/src/components/NotificationBell'
 
 const TABS = [
   { href: '/student/marketplace', label: 'Marketplace' },
@@ -73,6 +74,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           </nav>
 
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <ProfileMenu profileHref="/student/settings" />
           </div>
         </div>

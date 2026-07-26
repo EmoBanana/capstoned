@@ -28,7 +28,7 @@ describe('StudentApplications', () => {
     expect(screen.getByText('Frontend Architecture Mentorship')).toBeInTheDocument()
     expect(screen.getByText('Applied Machine Learning Sprint')).toBeInTheDocument()
     expect(screen.getByText('Under review')).toBeInTheDocument()
-    expect(screen.getByText('Interview scheduled')).toBeInTheDocument()
+    expect(screen.getByText('Interviewing')).toBeInTheDocument()
     expect(screen.getByText('90%')).toBeInTheDocument()
     expect(screen.getByText(/Interview within 10h/i)).toBeInTheDocument()
   })

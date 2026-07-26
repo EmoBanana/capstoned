@@ -7,6 +7,7 @@ import { useConvexAuth, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { Logo } from '@/src/components/ui'
 import ProfileMenu from '@/src/components/ProfileMenu'
+import NotificationBell from '@/src/components/NotificationBell'
 
 const TABS = [
   { href: '/recruiter/dashboard', label: 'Dashboard' },
@@ -73,6 +74,7 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
           </nav>
 
           <div className="flex items-center gap-3">
+            <NotificationBell />
             <ProfileMenu profileHref="/recruiter/settings" />
           </div>
         </div>

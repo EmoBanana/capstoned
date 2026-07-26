@@ -5,6 +5,7 @@ import { getAuthUserId } from '@convex-dev/auth/server'
 import type { QueryCtx } from './_generated/server'
 import type { Id } from './_generated/dataModel'
 import { clampScore, deltaSum } from './reliability'
+import { notify } from './notifications'
 
 /** The signed-in user's own candidate profile, or null. No demo fallback. */
 async function resolveCandidate(ctx: QueryCtx) {
@@ -132,6 +133,9 @@ export const addFeedback = mutation({
     await ctx.db.patch(enrollmentId, {
       feedback: [{ author, role: 'Mentor', when, body: text }, ...enrollment.feedback],
     })
+
+    const candidate = await ctx.db.get(enrollment.candidateId)
+    await notify(ctx, candidate?.userId, 'mentorship', `${author} left you new feedback on your mentorship.`, '/student/mentorship')
   },
 })
 
