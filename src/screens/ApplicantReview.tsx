@@ -223,7 +223,7 @@ export default function ApplicantReview() {
       ) : rows.length === 0 ? (
         <Card className="mt-4 px-6 py-16 text-center">
           <p className="text-sm font-semibold text-ink">No applicants yet.</p>
-          <p className="mt-1.5 text-sm text-ink-soft">New applications will appear here as students apply.</p>
+          <p className="mt-1.5 text-sm text-ink-soft">New applications will appear here as candidates apply.</p>
         </Card>
       ) : (
         <Card className="mt-4 overflow-hidden">
@@ -231,7 +231,7 @@ export default function ApplicantReview() {
             <table className="w-full min-w-[1040px] border-collapse text-left">
               <thead>
                 <tr className="border-b border-line bg-paper">
-                  {['Student', 'Study Status', 'Match Potential', 'Applied'].map((h) => (
+                  {['Candidate', 'Study Status', 'Match Potential', 'Applied'].map((h) => (
                     <th key={h} scope="col" className="px-5 py-3 text-[10px] font-bold uppercase tracking-[0.12em] text-ink-faint">
                       {h}
                     </th>

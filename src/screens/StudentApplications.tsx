@@ -43,7 +43,7 @@ export default function StudentApplications() {
   return (
     <Page>
       <header className="mb-8">
-        <Eyebrow>Student · My Applications</Eyebrow>
+        <Eyebrow>Candidate · My Applications</Eyebrow>
         <h1 className="mt-2 text-3xl font-black tracking-tight text-ink sm:text-4xl">Your applications</h1>
         <p className="mt-2 text-sm text-ink-soft">
           Every track you've applied to, with its live status and guaranteed-interview countdown.

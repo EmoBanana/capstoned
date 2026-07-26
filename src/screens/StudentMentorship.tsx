@@ -107,7 +107,7 @@ export default function StudentMentorship({ onNavigate }: { onNavigate?: (id: st
     <Page>
       <header className="flex flex-col gap-5 border-b border-line pb-7 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <Eyebrow>Student · My Mentorship</Eyebrow>
+          <Eyebrow>Candidate · My Mentorship</Eyebrow>
           <h1 className="mt-2 text-3xl font-black tracking-tight text-ink sm:text-4xl">{data.trackTitle}</h1>
           <p className="mt-2 text-sm text-ink-soft">
             {data.org} · Mentor: <span className="font-semibold text-ink">{data.mentorName}</span>

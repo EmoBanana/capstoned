@@ -177,7 +177,7 @@ export default function TrackBuilder() {
     <Page width="max-w-6xl">
       {/* ---------------- Header ---------------- */}
       <header className="mb-8 max-w-3xl">
-        <Eyebrow>Recruiter · New Track</Eyebrow>
+        <Eyebrow>Company · New Track</Eyebrow>
         <h1 className="mt-3 text-3xl font-black tracking-tight text-ink sm:text-4xl">
           Design Mentorship Track
         </h1>
@@ -374,7 +374,7 @@ export default function TrackBuilder() {
                 </div>
 
                 <p className="border-l-2 border-gold/50 bg-cream px-3.5 py-3 text-xs leading-relaxed text-ink-soft">
-                  Students see the <span className="font-semibold text-ink">applicant cap</span> and
+                  Candidates see the <span className="font-semibold text-ink">applicant cap</span> and
                   your <span className="font-semibold text-ink">{slaHours}-hour interview window</span>{' '}
                   before they apply.
                 </p>
@@ -568,7 +568,7 @@ export default function TrackBuilder() {
           )}
           {published && (
             <p className="mt-3 text-right text-xs text-success">
-              Live in the marketplace. Students can now apply against your {cap}-seat cap.
+              Live in the marketplace. Candidates can now apply against your {cap}-seat cap.
             </p>
           )}
         </div>
@@ -649,7 +649,7 @@ export default function TrackBuilder() {
                 Apply to Track
               </Button>
               <p className="mt-2 text-center text-[10px] text-ink-faint">
-                Student-side preview · interactions disabled
+                Candidate-side preview · interactions disabled
               </p>
             </div>
           </Card>

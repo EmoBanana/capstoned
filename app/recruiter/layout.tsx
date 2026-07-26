@@ -46,7 +46,7 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
             <div className="leading-none">
               <div className="text-base font-black tracking-tight text-ink">CAPSTONED</div>
               <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-faint">
-                Recruiter Workspace
+                Company Workspace
               </div>
             </div>
           </div>

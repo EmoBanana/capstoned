@@ -47,7 +47,7 @@ export default function RecruiterAssessment() {
   return (
     <Page>
       <header className="mb-6">
-        <Eyebrow>Recruiter · AI Assessment</Eyebrow>
+        <Eyebrow>Company · AI Assessment</Eyebrow>
         <h1 className="mt-2 text-2xl font-black tracking-tight text-ink sm:text-3xl">Mentee match assessment</h1>
         <p className="mt-1 text-sm text-ink-soft">
           {data.track.title} · A weighted match across skills, interests, aspirations, work style, and commitment.

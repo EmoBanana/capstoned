@@ -277,7 +277,7 @@ export default function Mentees() {
     <Page>
       <div className="flex flex-col gap-4 border-b border-line pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <Eyebrow>Recruiter · Mentees</Eyebrow>
+          <Eyebrow>Company · Mentees</Eyebrow>
           <h1 className="mt-2 text-2xl font-black tracking-tight text-ink sm:text-3xl">Enrolled mentees</h1>
           <p className="mt-1 text-sm font-medium text-ink-soft">
             {data?.trackTitle} · Talentbank · {data?.totalWeeks}-week track

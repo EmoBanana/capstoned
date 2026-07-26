@@ -46,8 +46,8 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   if (me.role === 'recruiter') return null
   if (candidate === undefined || !candidate?.profileComplete) return null
 
-  const name = me.name || 'Student'
-  const sub = me.email || 'Student'
+  const name = me.name || 'Candidate'
+  const sub = me.email || 'Candidate'
   const active = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
   return (
@@ -59,7 +59,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             <div className="leading-none">
               <div className="text-base font-black tracking-tight text-ink">CAPSTONED</div>
               <div className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-ink-faint">
-                Student Workspace
+                Candidate Workspace
               </div>
             </div>
           </div>

@@ -297,7 +297,7 @@ export default function Marketplace() {
   return (
     <Page>
       <header className="mb-8">
-        <Eyebrow>Student · Marketplace</Eyebrow>
+        <Eyebrow>Candidate · Marketplace</Eyebrow>
         <h1 className="mt-3 max-w-3xl text-3xl font-black leading-tight tracking-tight text-ink sm:text-4xl">
           Tracks open now
         </h1>
