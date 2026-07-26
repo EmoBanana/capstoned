@@ -147,7 +147,10 @@ export const forOrgManage = query({
           deliverables: t.deliverables,
           skills: t.requiredSkills.map((s) => s.name),
           checkpoints: t.scoringCheckpoints ?? [],
-          applicants: t.applicants + apps.length,
+          // Real applicants only — the recruiter's queue and edit form both
+          // count actual applications, so the dashboard must match (no seeded
+          // baseline padding, which is a marketplace-only device).
+          applicants: apps.length,
           enrolled: enrollments.length,
           avgFit,
         }
