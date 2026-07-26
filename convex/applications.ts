@@ -60,6 +60,34 @@ export const myTrackIds = query({
   },
 })
 
+/** The current student's applications, with track + status (My Applications). */
+export const mine = query({
+  args: {},
+  handler: async (ctx) => {
+    const candidate = await resolveCandidate(ctx)
+    if (!candidate) return []
+    const apps = await ctx.db
+      .query('applications')
+      .withIndex('by_candidate', (q) => q.eq('candidateId', candidate._id))
+      .collect()
+    return Promise.all(
+      apps.map(async (a) => {
+        const track = await ctx.db.get(a.trackId)
+        return {
+          id: a._id as string,
+          status: a.status,
+          matchScore: a.matchScore,
+          appliedAt: a.appliedAt,
+          slaDueAt: a.slaDueAt,
+          trackTitle: track?.title ?? '—',
+          org: track?.org ?? '',
+          orgSlug: track?.orgSlug ?? '',
+        }
+      }),
+    )
+  },
+})
+
 /** The review queue for an org's track: track summary + its applicants. */
 export const forOrg = query({
   args: { orgSlug: v.string() },

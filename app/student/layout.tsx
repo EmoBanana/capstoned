@@ -10,6 +10,7 @@ import { Logo } from '@/src/components/ui'
 
 const TABS = [
   { href: '/student/marketplace', label: 'Marketplace' },
+  { href: '/student/applications', label: 'My Applications' },
   { href: '/student/mentorship', label: 'My Mentorship' },
   { href: '/student/assessment', label: 'AI Assessment' },
 ]
