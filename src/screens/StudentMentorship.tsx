@@ -156,7 +156,7 @@ export default function StudentMentorship({ onNavigate }: { onNavigate?: (id: st
       </header>
 
       {pendingAction && (
-        <div className={`mt-5 rounded-[2px] border px-4 py-3 ${pendingAction === 'withdraw' ? 'border-danger/40 bg-danger-soft/40' : 'border-gold/40 bg-gold-soft/40'}`}>
+        <div className={`mt-5 rounded-[2px] border px-4 py-3 ${pendingAction === 'withdraw' ? 'border-danger bg-danger-soft' : 'border-gold/40 bg-gold-soft/40'}`}>
           <p className="text-sm text-ink">
             {pendingAction === 'complete'
               ? 'Mark this mentorship complete? It frees you to apply to another track, and completing counts toward your reliability.'
@@ -165,7 +165,7 @@ export default function StudentMentorship({ onNavigate }: { onNavigate?: (id: st
           {actionError && <p className="mt-2 text-xs font-medium text-danger-ink">{actionError}</p>}
           <div className="mt-3 flex items-center justify-end gap-2">
             <Button size="sm" variant="ghost" disabled={acting} onClick={() => setPendingAction(null)}>Cancel</Button>
-            <Button size="sm" disabled={acting} onClick={() => void runAction()}>
+            <Button size="sm" variant={pendingAction === 'withdraw' ? 'danger' : 'primary'} disabled={acting} onClick={() => void runAction()}>
               {pendingAction === 'complete' ? 'Mark complete' : 'Leave mentorship'}
             </Button>
           </div>
