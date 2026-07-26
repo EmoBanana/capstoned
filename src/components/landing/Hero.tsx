@@ -35,7 +35,7 @@ export function Hero({
   onExplore?: () => void
 }) {
   return (
-    <section className="relative overflow-hidden border-b border-line bg-cream">
+    <section className="relative overflow-hidden border-b border-line bg-gradient-to-b from-cream to-paper">
       <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 py-20 sm:py-24 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:py-28">
         {/* Left — message */}
         <div>
