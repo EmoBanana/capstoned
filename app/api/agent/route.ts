@@ -52,22 +52,18 @@ function resolveRole(role: string | undefined): AssistantRole {
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' }
 
-// Prefer the hosted provider (Groq) whenever a key is present — in dev too, so
-// the assistant works without a local Ollama — else fall back to local Ollama.
-// AI_PROVIDER forces a specific one.
+// Local dev → Gemma via Ollama (even when a Groq key is present in .env for
+// deployment); deployed (Vercel) → hosted Groq. AI_PROVIDER forces a specific
+// one (e.g. set AI_PROVIDER=groq to test Groq locally).
 function resolveProvider(): Provider {
   const explicit = process.env.AI_PROVIDER
   if (explicit === 'ollama' || explicit === 'groq') return explicit
-  return GROQ_API_KEY ? 'groq' : 'ollama'
+  if (process.env.VERCEL) return GROQ_API_KEY ? 'groq' : 'ollama'
+  return 'ollama'
 }
 
-// Try the preferred provider first, then the other as a fallback, so a down
-// Ollama or a transient Groq error still yields a reply. Groq is only attempted
-// when a key exists (otherwise it would just 401).
 function providerOrder(): Provider[] {
-  const primary = resolveProvider()
-  const order: Provider[] = primary === 'groq' ? ['groq', 'ollama'] : ['ollama', 'groq']
-  return order.filter((p) => (p === 'groq' ? Boolean(GROQ_API_KEY) : true))
+  return [resolveProvider()]
 }
 
 export async function POST(req: Request): Promise<Response> {
