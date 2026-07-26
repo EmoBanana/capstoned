@@ -87,7 +87,21 @@ export async function POST(req: Request): Promise<Response> {
   const fullMessages: ChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages]
 
   for (const provider of providerOrder()) {
-    const text = await completeFromProvider(provider, fullMessages, temperature)
+    let text = await completeFromProvider(provider, fullMessages, temperature)
+    // Small local models sometimes return an empty turn when they should act on
+    // information gathered over earlier turns (e.g. after the user supplies a
+    // note the model asked for). Nudge once to force a real response.
+    if (text !== null && text.trim() === '') {
+      const nudged: ChatMessage[] = [
+        ...fullMessages,
+        {
+          role: 'user',
+          content:
+            'Continue now. If you have everything you need to use a tool, output the action block; otherwise reply to me directly. Do not send an empty message.',
+        },
+      ]
+      text = await completeFromProvider(provider, nudged, temperature)
+    }
     if (text !== null) {
       const action: ParsedAction | null = parseAction(text)
       return json({ text, action }, 200)
