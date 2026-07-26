@@ -1,6 +1,8 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import { useQuery } from 'convex/react'
+import { api } from '@/convex/_generated/api'
 import {
   Page,
   Eyebrow,
@@ -11,13 +13,12 @@ import {
   ReliabilityScore,
   Input,
   Select,
-  TalentbankLogo,
 } from '../components/ui'
+import { CompanyLogo } from '../components/CompanyLogo'
 
 /* ------------------------------------------------------------------ */
 /*  Screen 2 — The Student Marketplace                                 */
-/*  Transparent, data-dense grid of open mentorship tracks with live   */
-/*  applicant caps and guaranteed-interview SLAs.                      */
+/*  Live, data-dense grid of open mentorship tracks from Convex.       */
 /* ------------------------------------------------------------------ */
 
 type Intensity = 'Part-time' | 'Full-time'
@@ -25,7 +26,7 @@ type Intensity = 'Part-time' | 'Full-time'
 type Track = {
   id: string
   company: string
-  monogram: string
+  slug: string
   reliability: number
   title: string
   intensity: Intensity
@@ -33,148 +34,10 @@ type Track = {
   skills: string[]
   applicants: number
   cap: number
-  slaHours: 24 | 48 | 72
+  slaHours: number
   closesInDays: number
   fitScore: number
 }
-
-const TRACKS: Track[] = [
-  {
-    id: 't1',
-    company: 'Talentbank',
-    monogram: 'TB',
-    reliability: 98,
-    title: 'Frontend Architecture Mentorship',
-    intensity: 'Part-time',
-    commitmentLine: '10 hrs/week · 12 weeks',
-    skills: ['React', 'TypeScript', 'Design Systems'],
-    applicants: 50,
-    cap: 50,
-    slaHours: 48,
-    closesInDays: 3,
-    fitScore: 91,
-  },
-  {
-    id: 't2',
-    company: 'Gamuda Digital',
-    monogram: 'GA',
-    reliability: 93,
-    title: 'Civil-Tech Data Pipeline Sprint',
-    intensity: 'Full-time',
-    commitmentLine: 'Full-time · 4 weeks',
-    skills: ['Python', 'ETL', 'GIS'],
-    applicants: 50,
-    cap: 50,
-    slaHours: 72,
-    closesInDays: 1,
-    fitScore: 78,
-  },
-  {
-    id: 't3',
-    company: 'MoneyLion',
-    monogram: 'ML',
-    reliability: 88,
-    title: 'Risk & Credit Modelling Track',
-    intensity: 'Part-time',
-    commitmentLine: '8 hrs/week · 10 weeks',
-    skills: ['SQL', 'Statistics', 'Pandas'],
-    applicants: 32,
-    cap: 40,
-    slaHours: 24,
-    closesInDays: 6,
-    fitScore: 84,
-  },
-  {
-    id: 't4',
-    company: 'Setel',
-    monogram: 'ST',
-    reliability: 71,
-    title: 'Mobile Payments QA Automation',
-    intensity: 'Full-time',
-    commitmentLine: 'Full-time · 6 weeks',
-    skills: ['Appium', 'Kotlin', 'CI/CD'],
-    applicants: 12,
-    cap: 35,
-    slaHours: 48,
-    closesInDays: 11,
-    fitScore: 63,
-  },
-  {
-    id: 't5',
-    company: 'Mindvalley',
-    monogram: 'MV',
-    reliability: 90,
-    title: 'Growth Experimentation & Analytics',
-    intensity: 'Part-time',
-    commitmentLine: '6 hrs/week · 8 weeks',
-    skills: ['A/B Testing', 'SQL', 'Amplitude'],
-    applicants: 28,
-    cap: 30,
-    slaHours: 24,
-    closesInDays: 2,
-    fitScore: 88,
-  },
-  {
-    id: 't6',
-    company: 'ServiceRocket',
-    monogram: 'SR',
-    reliability: 82,
-    title: 'Platform Integrations Mentorship',
-    intensity: 'Part-time',
-    commitmentLine: '10 hrs/week · 12 weeks',
-    skills: ['Node.js', 'REST APIs', 'Webhooks'],
-    applicants: 19,
-    cap: 45,
-    slaHours: 72,
-    closesInDays: 8,
-    fitScore: 74,
-  },
-  {
-    id: 't7',
-    company: 'Monash Malaysia X-Lab',
-    monogram: 'MX',
-    reliability: 95,
-    title: 'Applied Machine Learning Sprint',
-    intensity: 'Full-time',
-    commitmentLine: 'Full-time · 4 weeks',
-    skills: ['PyTorch', 'NLP', 'MLOps'],
-    applicants: 44,
-    cap: 48,
-    slaHours: 48,
-    closesInDays: 4,
-    fitScore: 86,
-  },
-  {
-    id: 't8',
-    company: 'Sunway iLabs',
-    monogram: 'SI',
-    reliability: 77,
-    title: 'Product Design Foundations Track',
-    intensity: 'Part-time',
-    commitmentLine: '8 hrs/week · 10 weeks',
-    skills: ['Figma', 'UX Research', 'Prototyping'],
-    applicants: 9,
-    cap: 25,
-    slaHours: 72,
-    closesInDays: 14,
-    fitScore: 69,
-  },
-  {
-    id: 't9',
-    company: 'Maybank Tech',
-    monogram: 'MB',
-    reliability: 91,
-    title: 'Cloud Security Engineering Sprint',
-    intensity: 'Full-time',
-    commitmentLine: 'Full-time · 6 weeks',
-    skills: ['AWS', 'Terraform', 'IAM'],
-    applicants: 38,
-    cap: 42,
-    slaHours: 24,
-    closesInDays: 5,
-    fitScore: 81,
-  },
-]
 
 type FilterChip = 'All' | Intensity
 const FILTERS: FilterChip[] = ['All', 'Part-time', 'Full-time']
@@ -233,37 +96,22 @@ function TrackCard({ track }: { track: Track }) {
 
   return (
     <Card className="flex flex-col p-5">
-      {/* Header: monogram + company + reliability */}
+      {/* Header: brand logo + company + reliability */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          {track.company === 'Talentbank' ? (
-            <div className="min-w-0">
-              <TalentbankLogo className="text-[11px]" />
-              <p className="mt-1.5 text-[11px] uppercase tracking-[0.08em] text-ink-faint">
-                {track.intensity}
-              </p>
-            </div>
-          ) : (
-            <>
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center border border-line-strong bg-paper text-sm font-black tracking-tight text-ink rounded-[2px]">
-                {track.monogram}
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-ink">{track.company}</p>
-                <p className="text-[11px] uppercase tracking-[0.08em] text-ink-faint">
-                  {track.intensity}
-                </p>
-              </div>
-            </>
-          )}
+          <CompanyLogo slug={track.slug} name={track.company} className="h-11 w-11" />
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-ink">{track.company}</p>
+            <p className="text-[11px] uppercase tracking-[0.08em] text-ink-faint">
+              {track.intensity}
+            </p>
+          </div>
         </div>
         <ReliabilityScore value={track.reliability} label="Rel" className="shrink-0" />
       </div>
 
       {/* Title */}
-      <h3 className="mt-4 text-lg font-bold leading-snug tracking-tight text-ink">
-        {track.title}
-      </h3>
+      <h3 className="mt-4 text-lg font-bold leading-snug tracking-tight text-ink">{track.title}</h3>
 
       {/* Commitment line */}
       <p className="mt-1.5 text-sm text-ink-soft">{track.commitmentLine}</p>
@@ -340,9 +188,13 @@ export default function Marketplace() {
   const [query, setQuery] = useState<string>('')
   const [sort, setSort] = useState<SortKey>('closing')
 
+  const data = useQuery(api.tracks.list)
+  const loading = data === undefined
+  const tracks = useMemo<Track[]>(() => (data ?? []) as Track[], [data])
+
   const visible = useMemo<Track[]>(() => {
     const q = query.trim().toLowerCase()
-    const filtered = TRACKS.filter((t) => {
+    const filtered = tracks.filter((t) => {
       const matchesFilter = filter === 'All' || t.intensity === filter
       const matchesQuery =
         q === '' ||
@@ -366,13 +218,13 @@ export default function Marketplace() {
       }
     })
     return sorted
-  }, [filter, query, sort])
+  }, [tracks, filter, query, sort])
 
-  const openTracks = TRACKS.filter((t) => t.applicants < t.cap).length
-  const avgSla = Math.round(
-    TRACKS.reduce((sum, t) => sum + t.slaHours, 0) / TRACKS.length
-  )
-  const totalSeats = TRACKS.reduce((sum, t) => sum + (t.cap - t.applicants), 0)
+  const openTracks = tracks.filter((t) => t.applicants < t.cap).length
+  const avgSla = tracks.length
+    ? Math.round(tracks.reduce((sum, t) => sum + t.slaHours, 0) / tracks.length)
+    : 0
+  const totalSeats = tracks.reduce((sum, t) => sum + Math.max(0, t.cap - t.applicants), 0)
 
   return (
     <Page>
@@ -391,9 +243,7 @@ export default function Marketplace() {
       {/* Stats strip */}
       <div className="mb-8 grid grid-cols-1 divide-y divide-line border border-line bg-white rounded-[2px] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         <div className="px-5 py-4">
-          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-ink-faint">
-            Open tracks
-          </p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-ink-faint">Open tracks</p>
           <p className="mt-1 text-2xl font-black tabular-nums text-ink">{openTracks}</p>
         </div>
         <div className="px-5 py-4">
@@ -464,17 +314,29 @@ export default function Marketplace() {
 
       {/* Result count */}
       <p className="mb-4 text-xs font-semibold uppercase tracking-[0.08em] text-ink-faint">
-        Showing {visible.length} {visible.length === 1 ? 'track' : 'tracks'}
-        {filter !== 'All' && <span className="text-ink-soft"> · {filter}</span>}
-        {query.trim() !== '' && <span className="text-ink-soft"> · matching “{query.trim()}”</span>}
+        {loading ? (
+          'Loading tracks…'
+        ) : (
+          <>
+            Showing {visible.length} {visible.length === 1 ? 'track' : 'tracks'}
+            {filter !== 'All' && <span className="text-ink-soft"> · {filter}</span>}
+            {query.trim() !== '' && (
+              <span className="text-ink-soft"> · matching “{query.trim()}”</span>
+            )}
+          </>
+        )}
       </p>
 
       {/* Grid */}
-      {visible.length === 0 ? (
+      {loading ? (
+        <Card className="px-6 py-16 text-center">
+          <p className="text-sm font-semibold text-ink-soft">Loading open tracks…</p>
+        </Card>
+      ) : visible.length === 0 ? (
         <Card className="px-6 py-16 text-center">
           <p className="text-sm font-semibold text-ink">No tracks match your filters.</p>
           <p className="mt-1.5 text-sm text-ink-soft">
-            Try clearing the search or switching commitment type.
+            Try clearing the search or switching the format filter.
           </p>
           <div className="mt-5">
             <Button

@@ -11,6 +11,8 @@
 import type * as auth from "../auth.js";
 import type * as health from "../health.js";
 import type * as http from "../http.js";
+import type * as seed from "../seed.js";
+import type * as tracks from "../tracks.js";
 import type * as users from "../users.js";
 
 import type {
@@ -23,6 +25,8 @@ declare const fullApi: ApiFromModules<{
   auth: typeof auth;
   health: typeof health;
   http: typeof http;
+  seed: typeof seed;
+  tracks: typeof tracks;
   users: typeof users;
 }>;
 
