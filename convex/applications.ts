@@ -10,8 +10,19 @@ import { myOrg } from './organizations'
 
 const STATUS = v.union(v.literal('pending'), v.literal('accepted'), v.literal('declined'))
 
+// Notifications are composed on the Convex server, whose runtime zone is UTC.
+// Pin the display to the event timezone so a notification time matches what the
+// candidate and company see on their cards, which render in local Malaysia time.
 const fmtWhen = (ms: number) =>
-  new Date(ms).toLocaleString('en-GB', { weekday: 'short', day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+  new Date(ms).toLocaleString('en-GB', {
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true,
+    timeZone: 'Asia/Kuala_Lumpur',
+  })
 
 /** The organization row for a track (by slug). */
 async function orgForTrack(ctx: MutationCtx, track: Doc<'tracks'>) {
