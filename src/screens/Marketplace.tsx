@@ -212,7 +212,7 @@ function ApplyModal({
                 ))}
               </Select>
             </Field>
-            <Field label="Hours / week you'll commit" hint={`track expects ${track.weeklyHours}`}>
+            <Field label="Weekly hours" hint={`track expects ${track.weeklyHours}`}>
               <Input
                 type="number"
                 min={1}

@@ -40,7 +40,7 @@ export function CompanyLogo({
 }) {
   if (slug === 'talentbank') {
     return (
-      <div className={`flex shrink-0 items-center justify-center ${className}`}>
+      <div className="flex shrink-0 items-center">
         <TalentbankLogo className="text-[9px]" />
       </div>
     )
