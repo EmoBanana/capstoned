@@ -57,7 +57,7 @@ export function CompanyLogo({
       .toUpperCase()
     return (
       <div
-        className={`flex shrink-0 items-center justify-center border border-line-strong bg-paper text-sm font-black tracking-tight text-ink rounded-[2px] ${className}`}
+        className={`flex shrink-0 items-center justify-center text-sm font-black tracking-tight text-ink ${className}`}
       >
         {initials}
       </div>
@@ -65,13 +65,11 @@ export function CompanyLogo({
   }
 
   return (
-    <div
-      className={`flex shrink-0 items-center justify-center border border-line bg-white rounded-[2px] ${className}`}
-    >
+    <div className={`flex shrink-0 items-center justify-center ${className}`}>
       <svg
         role="img"
         viewBox="0 0 24 24"
-        className="h-1/2 w-1/2"
+        className="h-full w-full"
         fill={`#${icon.hex}`}
         aria-label={icon.title}
       >
