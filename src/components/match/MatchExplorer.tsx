@@ -9,7 +9,8 @@
 /*  Mount inside a ConvexProvider (same context as Marketplace).        */
 /* ------------------------------------------------------------------ */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import gsap from 'gsap'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import type { Id } from '@/convex/_generated/dataModel'
@@ -30,6 +31,16 @@ type Ranked = {
 
 function fitTone(pct: number): 'success' | 'gold' | 'danger' {
   return pct >= 75 ? 'success' : pct >= 55 ? 'gold' : 'danger'
+}
+
+// useLayoutEffect on the client (pre-paint, no flash), useEffect on SSR.
+const useIso = typeof window !== 'undefined' ? useLayoutEffect : useEffect
+
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
 }
 
 type ApplyState =
@@ -77,6 +88,29 @@ export default function MatchExplorer() {
 
   const loading =
     candidateDoc === undefined || trackDocs === undefined || myTrackIds === undefined
+
+  // Ranked list entrance: stagger the items in once tracks first arrive.
+  // Scoped to the list container via gsap.context and reverted on cleanup;
+  // keyed on `rankedReady` so it runs a single time when data loads.
+  const listRef = useRef<HTMLDivElement>(null)
+  const rankedReady = ranked.length > 0
+  useIso(() => {
+    const el = listRef.current
+    if (!el) return
+    if (prefersReducedMotion()) return
+
+    const ctx = gsap.context(() => {
+      gsap.from('.js-rank-item', {
+        y: 16,
+        autoAlpha: 0,
+        duration: 0.5,
+        ease: 'power2.out',
+        stagger: 0.05,
+      })
+    }, el)
+
+    return () => ctx.revert()
+  }, [rankedReady])
 
   /* ---- Loading ---- */
   if (loading) {
@@ -148,7 +182,7 @@ export default function MatchExplorer() {
       ) : (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,20rem)_minmax(0,1fr)]">
           {/* Ranked list */}
-          <div className="flex flex-col gap-3">
+          <div ref={listRef} className="flex flex-col gap-3">
             <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-faint">
               {ranked.length} tracks ranked by fit
             </p>
@@ -164,7 +198,7 @@ export default function MatchExplorer() {
                     setSelectedId(r.id)
                     setApplyState({ kind: 'idle' })
                   }}
-                  className={`w-full border px-4 py-3.5 text-left rounded-[2px] transition-colors duration-150 ${
+                  className={`js-rank-item w-full border px-4 py-3.5 text-left rounded-[2px] transition-colors duration-150 ${
                     active
                       ? 'border-ink bg-white'
                       : 'border-line bg-white hover:border-ink/50 hover:bg-paper'
