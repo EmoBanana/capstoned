@@ -13,7 +13,7 @@ export default function Home() {
   useEffect(() => {
     if (isLoading) return
     if (!isAuthenticated) {
-      router.replace('/login')
+      router.replace('/welcome')
       return
     }
     if (me === undefined) return
