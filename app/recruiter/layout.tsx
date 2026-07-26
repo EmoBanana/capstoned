@@ -4,9 +4,9 @@ import { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { useConvexAuth, useQuery } from 'convex/react'
-import { useAuthActions } from '@convex-dev/auth/react'
 import { api } from '@/convex/_generated/api'
 import { Logo } from '@/src/components/ui'
+import ProfileMenu from '@/src/components/ProfileMenu'
 
 const TABS = [
   { href: '/recruiter/dashboard', label: 'Dashboard' },
@@ -21,7 +21,6 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
   const { isLoading, isAuthenticated } = useConvexAuth()
   const me = useQuery(api.users.currentUser, isAuthenticated ? {} : 'skip')
   const org = useQuery(api.organizations.mine, isAuthenticated ? {} : 'skip')
-  const { signOut } = useAuthActions()
   const router = useRouter()
   const pathname = usePathname()
 
@@ -79,15 +78,7 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
               <span className="h-2.5 w-2.5 rounded-[1px]" style={{ backgroundColor: `#${org.brandColor}` }} />
               <span className="text-[13px] font-bold text-ink">{org.name}</span>
             </span>
-            <button
-              onClick={() => {
-                void signOut()
-                router.push('/welcome')
-              }}
-              className="px-1 py-2 text-xs font-semibold text-ink-soft transition-colors hover:text-ink"
-            >
-              Sign out
-            </button>
+            <ProfileMenu />
           </div>
         </div>
 
