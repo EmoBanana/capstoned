@@ -44,6 +44,15 @@ export default defineSchema({
     .index('by_slug', ['slug'])
     .index('by_owner', ['ownerUserId']),
 
+  // A company can be represented by many mentors — each recruiter account is a
+  // member of exactly one organization (their own mentor profile, shared company).
+  orgMembers: defineTable({
+    orgId: v.id('organizations'),
+    userId: v.id('users'),
+  })
+    .index('by_user', ['userId'])
+    .index('by_org', ['orgId']),
+
   // domain.Track (+ orgSlug/slaHours/closesInDays/status extensions).
   tracks: defineTable({
     title: v.string(),

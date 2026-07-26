@@ -54,8 +54,8 @@ export default function CompanyOnboarding() {
 
       {claimable && claimable.length > 0 && (
         <Card className="mb-6 p-5">
-          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-faint">Representing an existing company?</p>
-          <p className="mt-1 text-sm text-ink-soft">Pick it to manage its existing tracks and applicants — otherwise just fill in your own below.</p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-faint">Represent an existing company?</p>
+          <p className="mt-1 text-sm text-ink-soft">Pick your company to join its team of mentors — you'll share its tracks, applicants, and mentees. Or fill in a new one below.</p>
           <div className="mt-4 flex flex-wrap gap-2">
             {claimable.map((c) => (
               <button
