@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { errorText } from '../components/errors'
+import { CompanyLogo } from '../components/CompanyLogo'
 import {
   Page,
   Button,
@@ -104,7 +105,6 @@ export default function TrackBuilder() {
   const createTrack = useMutation(api.tracks.create)
   const org = useQuery(api.organizations.mine)
   const companyName = org?.name ?? 'Your company'
-  const companyInitials = companyName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'CO'
 
   // Step 1 — Basics
   const [title, setTitle] = useState<string>('Frontend Platform Mentorship')
@@ -641,9 +641,12 @@ export default function TrackBuilder() {
           <Card className="overflow-hidden">
             {/* company strip */}
             <div className="flex items-center gap-3 border-b border-line bg-paper px-5 py-4">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[2px] border border-line-strong bg-white text-sm font-black text-ink">
-                {companyInitials}
-              </div>
+              <CompanyLogo
+                slug={org?.slug ?? ''}
+                name={companyName}
+                logoUrl={org?.logoUrl ?? null}
+                className="h-10 w-10"
+              />
               <div className="min-w-0 leading-tight">
                 <div className="truncate text-sm font-bold text-ink">{companyName}</div>
                 <div className="text-[11px] text-ink-faint">{department || 'Department'}</div>
