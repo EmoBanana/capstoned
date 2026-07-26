@@ -724,10 +724,10 @@ export default function TrackBuilder({ editId = null }: { editId?: string | null
                     Applicants
                   </span>
                   <span className="text-xs font-semibold tabular-nums text-ink">
-                    0 / {cap} cap
+                    {isEdit && editData ? editData.applicants : 0} / {cap} cap
                   </span>
                 </div>
-                <ProgressBar value={0} max={Number(cap) || 1} tone="slate" />
+                <ProgressBar value={isEdit && editData ? editData.applicants : 0} max={Number(cap) || 1} tone="slate" />
               </div>
 
               {/* meta grid */}
