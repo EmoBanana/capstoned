@@ -4,7 +4,7 @@ import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 import type { QueryCtx } from './_generated/server'
 import type { Id } from './_generated/dataModel'
-import { clampScore, deltaSum } from './reliability'
+import { clampScore, deltaSum, reliabilityDisplay } from './reliability'
 import { notify } from './notifications'
 
 /** The signed-in user's own candidate profile, or null. No demo fallback. */
@@ -50,6 +50,7 @@ export const menteesForOrg = query({
           program: c?.program ?? '',
           animalKey: c?.animalKey ?? 'owl',
           reliability: clampScore(c?.reliabilityScore ?? 100, await deltaSum(ctx, 'candidate', e.candidateId)),
+          reliabilityDisplay: await reliabilityDisplay(ctx, 'candidate', e.candidateId, c?.reliabilityScore ?? 100, false),
           status: e.status,
           weekProgress: e.weekProgress,
           totalWeeks: e.totalWeeks,

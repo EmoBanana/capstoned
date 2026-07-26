@@ -50,6 +50,7 @@ type TrackRow = {
   slaHours: number
   closesInDays: number
   reliability: number
+  reliabilityDisplay: number | null
   logoUrl: string | null
   // (plus domain fields used only by computeMatch — passed through)
   [key: string]: unknown
@@ -114,7 +115,7 @@ function TrackCard({
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-ink">{track.org}</p>
           <p className="truncate text-xs text-ink-faint">
-            {INTENSITY_LABEL[track.intensity]} · {track.reliability}% reliable
+            {INTENSITY_LABEL[track.intensity]} · {track.reliabilityDisplay === null ? 'New' : `${track.reliabilityDisplay}% reliable`}
           </p>
         </div>
       </div>

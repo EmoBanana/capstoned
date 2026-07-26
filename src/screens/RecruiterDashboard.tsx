@@ -255,7 +255,7 @@ export default function RecruiterDashboard({ onNavigate }: { onNavigate?: (id: s
         <Stat label="Enrolled mentees" value={String(enrolledMentees)} sub="Currently mentoring" />
         <Card className="flex flex-col justify-between p-5">
           <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-faint">Company standing</div>
-          <div className="mt-3"><ReliabilityScore value={data?.org.reliability ?? 95} /></div>
+          <div className="mt-3"><ReliabilityScore value={org?.reliabilityDisplay ?? null} /></div>
         </Card>
       </div>
 

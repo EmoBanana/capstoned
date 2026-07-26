@@ -2,6 +2,7 @@ import { ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { myOrg } from './organizations'
+import { reliabilityDisplay } from './reliability'
 
 const FW = { technicalSkills: 0.3, interests: 0.2, aspirations: 0.15, workingStyle: 0.25, commitment: 0.1 }
 
@@ -31,6 +32,9 @@ export const list = query({
           id: t._id as string,
           applicants: t.applicants + liveApps.length,
           reliability: org?.reliability ?? 90,
+          reliabilityDisplay: org
+            ? await reliabilityDisplay(ctx, 'organization', org._id, org.reliability, org.verified)
+            : null,
           brandColor: org?.brandColor ?? '888888',
           logoUrl,
         }

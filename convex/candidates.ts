@@ -3,6 +3,7 @@ import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 import type { QueryCtx, MutationCtx } from './_generated/server'
+import { reliabilityDisplay } from './reliability'
 
 /** The signed-in user's own candidate profile, or null. No demo fallback:
  *  a fresh account has no matchable profile until it finishes onboarding. */
@@ -17,7 +18,22 @@ async function myCandidate(ctx: QueryCtx | MutationCtx) {
 
 export const current = query({
   args: {},
-  handler: async (ctx) => myCandidate(ctx),
+  handler: async (ctx) => {
+    const candidate = await myCandidate(ctx)
+    if (!candidate) return null
+    // Additive display field; `reliabilityScore` is left untouched so matching
+    // and every existing consumer keep the raw numeric value.
+    return {
+      ...candidate,
+      reliabilityDisplay: await reliabilityDisplay(
+        ctx,
+        'candidate',
+        candidate._id,
+        candidate.reliabilityScore,
+        false,
+      ),
+    }
+  },
 })
 
 const skill = v.object({ name: v.string(), level: v.number() })

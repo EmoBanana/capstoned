@@ -22,6 +22,7 @@ type MenteeData = {
   program: string
   animalKey: string
   reliability: number
+  reliabilityDisplay: number | null
   status: string
   weekProgress: number
   totalWeeks: number
@@ -127,7 +128,7 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
               </select>
             </div>
             <p className="mt-1 text-sm text-ink-soft">{mentee.program} · {mentee.university}</p>
-            <div className="mt-3"><ReliabilityScore value={mentee.reliability} /></div>
+            <div className="mt-3"><ReliabilityScore value={mentee.reliabilityDisplay} /></div>
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -341,7 +342,6 @@ export default function Mentees() {
   const org = useQuery(api.organizations.mine)
   const orgSlug = org?.slug
   const data = useQuery(api.enrollments.menteesForOrg, orgSlug ? { orgSlug } : 'skip')
-  const orgRel = useQuery(api.reliability.orgScore, orgSlug ? { orgSlug } : 'skip')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   if (data === undefined) {
@@ -382,7 +382,7 @@ export default function Mentees() {
             <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-faint">Cohort</div>
             <div className="text-xs font-medium text-ink-soft">{mentees.length} mentees enrolled</div>
           </div>
-          <ReliabilityScore value={orgRel?.score ?? 98} label="Company" />
+          <ReliabilityScore value={org?.reliabilityDisplay ?? null} label="Company" />
         </div>
       </div>
 

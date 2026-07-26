@@ -22,6 +22,29 @@ export function clampScore(base: number, delta: number): number {
   return Math.max(0, Math.min(100, base + delta))
 }
 
+/**
+ * Reliability standing for display, gated on a real track record.
+ * Returns the derived score `clampScore(base, deltaSum)` only when the subject
+ * has at least one reliability event OR is an established brand (`established`,
+ * e.g. a verified organization). With no events and not established it returns
+ * null, meaning "New" — no fabricated percentage for a fresh account.
+ */
+export async function reliabilityDisplay(
+  ctx: QueryCtx | MutationCtx,
+  subjectKind: SubjectKind,
+  subjectId: string,
+  base: number,
+  established: boolean,
+): Promise<number | null> {
+  const events = await ctx.db
+    .query('reliabilityEvents')
+    .withIndex('by_subject', (q) => q.eq('subjectKind', subjectKind).eq('subjectId', subjectId))
+    .collect()
+  if (events.length === 0 && !established) return null
+  const delta = events.reduce((sum, e) => sum + e.delta, 0)
+  return clampScore(base, delta)
+}
+
 /** Derived reliability for an org (by slug), plus its recent events. */
 export const orgScore = query({
   args: { orgSlug: v.string() },

@@ -242,10 +242,25 @@ export function ReliabilityScore({
   label = 'Reliability',
   className = '',
 }: {
-  value: number
+  value: number | null
   label?: string
   className?: string
 }) {
+  // No track record yet: show a neutral "New" chip instead of a fabricated
+  // percentage. Standing has to be earned before a number appears.
+  if (value === null) {
+    return (
+      <div
+        className={`inline-flex items-center gap-2 border px-3 py-1.5 rounded-[2px] ${badgeTones.slate} ${className}`}
+      >
+        <span className="h-2 w-2 rounded-full bg-slate" />
+        <span className="text-[10px] font-bold uppercase tracking-[0.08em] opacity-80">
+          {label}
+        </span>
+        <span className="text-sm font-bold">New</span>
+      </div>
+    )
+  }
   const tone: Tone = value >= 90 ? 'success' : value >= 70 ? 'gold' : 'danger'
   const dot =
     value >= 90 ? 'bg-success' : value >= 70 ? 'bg-gold' : 'bg-danger'

@@ -3,6 +3,7 @@ import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 import type { QueryCtx, MutationCtx } from './_generated/server'
+import { reliabilityDisplay } from './reliability'
 
 const slugify = (name: string) =>
   name.trim().toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'company'
@@ -29,6 +30,7 @@ export const mine = query({
       slug: org.slug,
       brandColor: org.brandColor,
       reliability: org.reliability,
+      reliabilityDisplay: await reliabilityDisplay(ctx, 'organization', org._id, org.reliability, org.verified),
       department: org.department ?? '',
       about: org.about ?? '',
       logoUrl,

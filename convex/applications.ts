@@ -4,7 +4,7 @@ import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 import type { QueryCtx, MutationCtx } from './_generated/server'
 import type { Doc } from './_generated/dataModel'
-import { recordEvent } from './reliability'
+import { recordEvent, reliabilityDisplay } from './reliability'
 import { notify } from './notifications'
 import { myOrg } from './organizations'
 
@@ -187,6 +187,7 @@ export const forOrg = query({
           program: c?.program ?? '',
           animalKey: c?.animalKey ?? 'owl',
           reliability: c?.reliabilityScore ?? 0,
+          reliabilityDisplay: await reliabilityDisplay(ctx, 'candidate', a.candidateId, c?.reliabilityScore ?? 0, false),
         }
       }),
     )

@@ -63,6 +63,7 @@ type Applicant = {
   program: string
   animalKey: string
   reliability: number
+  reliabilityDisplay: number | null
 }
 
 /** Reusable calendar/time picker for proposing or counter-proposing a slot. */
@@ -228,7 +229,6 @@ export default function ApplicantReview() {
   const org = useQuery(api.organizations.mine)
   const orgSlug = org?.slug
   const data = useQuery(api.applications.forOrg, orgSlug ? { orgSlug } : 'skip')
-  const orgRel = useQuery(api.reliability.orgScore, orgSlug ? { orgSlug } : 'skip')
   const setStatus = useMutation(api.applications.setStatus)
   const propose = useMutation(api.applications.proposeInterview)
   const confirm = useMutation(api.applications.confirmInterview)
@@ -290,7 +290,7 @@ export default function ApplicantReview() {
             <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-faint">Company standing</div>
             <div className="text-xs font-medium text-ink-soft">Responses within {data?.slaHours ?? 48}h</div>
           </div>
-          <ReliabilityScore value={orgRel?.score ?? 98} />
+          <ReliabilityScore value={org?.reliabilityDisplay ?? null} />
         </div>
       </div>
 
@@ -402,7 +402,7 @@ export default function ApplicantReview() {
                                   <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-ink-soft">
                                     <span><span className="font-semibold text-ink-faint">Availability:</span> {a.availability || '—'}</span>
                                     <span><span className="font-semibold text-ink-faint">Commits:</span> {a.hoursPerWeek || '—'} hrs/week</span>
-                                    <span><span className="font-semibold text-ink-faint">Reliability:</span> {a.reliability}%</span>
+                                    <span><span className="font-semibold text-ink-faint">Reliability:</span> {a.reliabilityDisplay === null ? 'New' : `${a.reliabilityDisplay}%`}</span>
                                   </div>
                                   <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.1em] text-ink-faint">Why they're a fit</p>
                                   <p className="mt-1 text-sm leading-relaxed text-ink">{a.note || 'No note provided.'}</p>
