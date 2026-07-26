@@ -120,10 +120,10 @@ export default function TrackBuilder({ editId = null }: { editId?: string | null
 
   // Step 2 — Commitment
   const [intensity, setIntensity] = useState<Intensity>('Part-time')
-  const [durationWeeks, setDurationWeeks] = useState<number>(12)
-  const [weeklyHours, setWeeklyHours] = useState<number>(12)
-  const [cap, setCap] = useState<number>(50)
-  const [slaHours, setSlaHours] = useState<number>(48)
+  const [durationWeeks, setDurationWeeks] = useState<string>('12')
+  const [weeklyHours, setWeeklyHours] = useState<string>('12')
+  const [cap, setCap] = useState<string>('50')
+  const [slaHours, setSlaHours] = useState<string>('48')
 
   // Step 3 — Deliverables + Checkpoints
   const [deliverables, setDeliverables] = useState<Deliverable[]>([
@@ -151,10 +151,10 @@ export default function TrackBuilder({ editId = null }: { editId?: string | null
     setDescription(editData.summary)
     setSkillsText(editData.skills.join(', '))
     setIntensity(editData.intensity === 'intense' ? 'Full-time' : 'Part-time')
-    setDurationWeeks(editData.durationWeeks)
-    setWeeklyHours(editData.weeklyHours)
-    setCap(editData.cap)
-    setSlaHours(editData.slaHours)
+    setDurationWeeks(String(editData.durationWeeks))
+    setWeeklyHours(String(editData.weeklyHours))
+    setCap(String(editData.cap))
+    setSlaHours(String(editData.slaHours))
     if (editData.deliverables.length) {
       setDeliverables(editData.deliverables.map((d, i) => ({ id: i + 1, title: d.title, detail: d.detail })))
     }
@@ -220,10 +220,10 @@ export default function TrackBuilder({ editId = null }: { editId?: string | null
         department: department.trim(),
         summary: description.trim(),
         intensity: (intensity === 'Full-time' ? 'intense' : 'moderate') as 'intense' | 'moderate',
-        durationWeeks,
-        weeklyHours,
-        cap,
-        slaHours,
+        durationWeeks: posIntOrOne(durationWeeks),
+        weeklyHours: posIntOrOne(weeklyHours),
+        cap: posIntOrOne(cap),
+        slaHours: posIntOrOne(slaHours),
         deliverables: deliverables
           .map((d) => ({ title: d.title.trim(), detail: d.detail.trim() }))
           .filter((d) => d.title),
@@ -398,7 +398,7 @@ export default function TrackBuilder({ editId = null }: { editId?: string | null
                       type="number"
                       min={1}
                       value={durationWeeks}
-                      onChange={(e) => setDurationWeeks(clampInt(e.target.value, 1, 104))}
+                      onChange={(e) => setDurationWeeks(e.target.value)}
                       className="tabular-nums"
                     />
                   </Field>
@@ -416,16 +416,16 @@ export default function TrackBuilder({ editId = null }: { editId?: string | null
                       min={2}
                       max={40}
                       step={1}
-                      value={weeklyHours}
-                      onChange={(e) => setWeeklyHours(clampInt(e.target.value, 2, 40))}
+                      value={Number(weeklyHours) || 2}
+                      onChange={(e) => setWeeklyHours(e.target.value)}
                       className="h-1.5 w-full cursor-pointer appearance-none rounded-[1px] bg-line accent-ink"
                     />
                     <Input
                       type="number"
-                      min={2}
+                      min={1}
                       max={40}
                       value={weeklyHours}
-                      onChange={(e) => setWeeklyHours(clampInt(e.target.value, 2, 40))}
+                      onChange={(e) => setWeeklyHours(e.target.value)}
                       className="w-20 text-center tabular-nums"
                       aria-label="Expected weekly hours"
                     />
@@ -443,7 +443,7 @@ export default function TrackBuilder({ editId = null }: { editId?: string | null
                       type="number"
                       min={1}
                       value={cap}
-                      onChange={(e) => setCap(clampInt(e.target.value, 1, 500))}
+                      onChange={(e) => setCap(e.target.value)}
                       className="tabular-nums"
                     />
                   </Field>
@@ -457,7 +457,7 @@ export default function TrackBuilder({ editId = null }: { editId?: string | null
                       type="number"
                       min={1}
                       value={slaHours}
-                      onChange={(e) => setSlaHours(clampInt(e.target.value, 1, 168))}
+                      onChange={(e) => setSlaHours(e.target.value)}
                       className="tabular-nums"
                     />
                   </Field>
@@ -717,7 +717,7 @@ export default function TrackBuilder({ editId = null }: { editId?: string | null
                     0 / {cap} cap
                   </span>
                 </div>
-                <ProgressBar value={0} max={cap || 1} tone="slate" />
+                <ProgressBar value={0} max={Number(cap) || 1} tone="slate" />
               </div>
 
               {/* meta grid */}
@@ -773,6 +773,13 @@ function clampInt(value: string, min: number, max: number): number {
   const n = Math.round(Number(value))
   if (!Number.isFinite(n)) return min
   return Math.max(min, Math.min(max, n))
+}
+
+/** Coerce a free-text number field to a positive integer on save: blank, 0, or
+ *  anything invalid falls back to 1 (so a field can be cleared while typing). */
+function posIntOrOne(value: string): number {
+  const n = Math.round(Number(value))
+  return Number.isFinite(n) && n > 0 ? n : 1
 }
 
 function StepHeading({
