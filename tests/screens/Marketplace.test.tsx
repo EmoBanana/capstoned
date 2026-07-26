@@ -84,12 +84,12 @@ describe('Marketplace', () => {
     expect(cardTitles()[0]).toBe('Applied Machine Learning Sprint')
   })
 
-  it('shows a disabled Join Waitlist for a full track', async () => {
+  it('shows a disabled Waitlist for a full track', async () => {
     const user = userEvent.setup()
     render(<Marketplace />)
     await user.type(screen.getByRole('searchbox', { name: /search tracks/i }), 'Talentbank')
     expect(cardTitles()).toEqual(['Frontend Architecture Mentorship'])
-    expect(screen.getByRole('button', { name: /join waitlist/i })).toBeDisabled()
-    expect(screen.getByText(/cap reached/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /waitlist/i })).toBeDisabled()
+    expect(screen.getByText(/waitlist only/i)).toBeInTheDocument()
   })
 })

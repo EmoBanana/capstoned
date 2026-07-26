@@ -10,10 +10,8 @@ import {
   Page,
   Eyebrow,
   Card,
-  Badge,
   Button,
   ProgressBar,
-  ReliabilityScore,
   Input,
   Select,
   Field,
@@ -72,14 +70,6 @@ function commitmentLine(t: TrackRow): string {
     : `${t.weeklyHours} hrs/week · ${t.durationWeeks} weeks`
 }
 
-function ClockIcon() {
-  return (
-    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
-      <circle cx="12" cy="12" r="9" />
-      <path d="M12 7v5l3 2" strokeLinecap="square" />
-    </svg>
-  )
-}
 function SearchIcon() {
   return (
     <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
@@ -89,11 +79,6 @@ function SearchIcon() {
   )
 }
 
-function barTone(pct: number): 'success' | 'gold' | 'danger' {
-  if (pct >= 90) return 'danger'
-  if (pct >= 70) return 'gold'
-  return 'success'
-}
 function fitTone(pct: number): 'success' | 'gold' | 'danger' {
   return pct >= 75 ? 'success' : pct >= 55 ? 'gold' : 'danger'
 }
@@ -109,95 +94,51 @@ function TrackCard({
   applied: boolean
   onApply: () => void
 }) {
-  const pct = Math.round((track.applicants / track.cap) * 100)
   const full = track.applicants >= track.cap
-  const closingSoon = track.closesInDays <= 2
+  const seatsLeft = Math.max(0, track.cap - track.applicants)
+  const closesLabel = track.closesInDays === 1 ? 'closes tomorrow' : `${track.closesInDays}d left`
 
   return (
-    <Card className="flex flex-col p-5">
-      <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
-          <CompanyLogo slug={track.orgSlug} name={track.org} className="h-11 w-11" />
-          <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-ink">{track.org}</p>
-            <p className="text-[11px] uppercase tracking-[0.08em] text-ink-faint">
-              {INTENSITY_LABEL[track.intensity]}
-            </p>
-          </div>
+    <Card className="flex flex-col p-6">
+      <div className="flex items-center gap-3">
+        <CompanyLogo slug={track.orgSlug} name={track.org} className="h-10 w-10" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-ink">{track.org}</p>
+          <p className="truncate text-xs text-ink-faint">
+            {INTENSITY_LABEL[track.intensity]} · {track.reliability}% reliable
+          </p>
         </div>
-        <ReliabilityScore value={track.reliability} label="Rel" className="shrink-0" />
       </div>
 
-      <h3 className="mt-4 text-lg font-bold leading-snug tracking-tight text-ink">{track.title}</h3>
-      <p className="mt-1.5 text-sm text-ink-soft">{commitmentLine(track)}</p>
+      <h3 className="mt-5 text-lg font-bold leading-snug tracking-tight text-ink">{track.title}</h3>
+      <p className="mt-1 text-sm text-ink-soft">{commitmentLine(track)}</p>
+      <p className="mt-2 truncate text-xs text-ink-faint">
+        {track.requiredSkills.slice(0, 3).map((s) => s.name).join('  ·  ')}
+      </p>
 
-      {/* Your fit — real weighted-matrix result */}
       {fit !== null && (
-        <div className="mt-3 border border-line bg-paper px-3 py-2 rounded-[2px]">
-          <div className="mb-1 flex items-baseline justify-between">
-            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-faint">
-              Your fit
-            </span>
-            <span className="text-sm font-bold tabular-nums text-ink">{fit}%</span>
+        <div className="mt-5">
+          <div className="mb-1.5 flex items-baseline justify-between">
+            <span className="text-xs text-ink-faint">Your fit</span>
+            <span className="text-sm font-semibold tabular-nums text-ink">{fit}%</span>
           </div>
-          <ProgressBar value={fit} tone={fitTone(fit)} />
+          <ProgressBar value={fit} tone={fitTone(fit)} height="h-1" />
         </div>
       )}
 
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {track.requiredSkills.slice(0, 3).map((s) => (
-          <Badge key={s.name} tone="slate">
-            {s.name}
-          </Badge>
-        ))}
-      </div>
-
-      <div className="mt-4">
-        <span className="inline-flex items-center gap-1.5 border border-gold/40 bg-gold-soft px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-gold-ink rounded-[2px]">
-          <ClockIcon />
-          SLA · Guaranteed Interview within {track.slaHours} Hrs
-        </span>
-      </div>
-
-      <div className="mt-4">
-        <div className="mb-1.5 flex items-baseline justify-between">
-          <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-soft">Applicants</span>
-          <span className="text-xs font-bold tabular-nums text-ink">
-            {track.applicants}/{track.cap} <span className="text-ink-faint">(Cap)</span>
-          </span>
+      <div className="mt-auto flex items-end justify-between gap-3 pt-6">
+        <div className="min-w-0 text-xs leading-relaxed text-ink-faint">
+          <div>Interview within {track.slaHours}h</div>
+          <div>
+            {full ? 'Waitlist only' : `${seatsLeft} seats left`}
+            <span className={closesLabel === 'closes tomorrow' ? ' text-gold-ink' : ''}> · {closesLabel}</span>
+          </div>
         </div>
-        <ProgressBar value={track.applicants} max={track.cap} tone={barTone(pct)} />
-        {full ? (
-          <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-danger">
-            Cap reached · waitlist only
-          </p>
-        ) : pct >= 90 ? (
-          <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-danger">
-            {track.cap - track.applicants} seats left · filling fast
-          </p>
-        ) : (
-          <p className="mt-1.5 text-[11px] tabular-nums text-ink-faint">
-            {track.cap - track.applicants} of {track.cap} seats open
-          </p>
-        )}
-      </div>
-
-      <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-4">
-        <span
-          className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
-            closingSoon ? 'text-danger' : 'text-ink-soft'
-          }`}
-        >
-          <ClockIcon />
-          {track.closesInDays === 1 ? 'Closes tomorrow' : `Closes in ${track.closesInDays} days`}
-        </span>
         {applied ? (
-          <Button variant="secondary" size="sm" disabled>
-            ✓ Applied
-          </Button>
+          <span className="shrink-0 text-xs font-semibold text-success-ink">✓ Applied</span>
         ) : full ? (
           <Button variant="secondary" size="sm" disabled>
-            Join Waitlist
+            Waitlist
           </Button>
         ) : (
           <Button variant="primary" size="sm" onClick={onApply}>
@@ -366,19 +307,17 @@ export default function Marketplace() {
         </p>
       </header>
 
-      <div className="mb-8 grid grid-cols-1 divide-y divide-line border border-line bg-white rounded-[2px] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-        <div className="px-5 py-4">
-          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-ink-faint">Open tracks</p>
-          <p className="mt-1 text-2xl font-black tabular-nums text-ink">{openTracks}</p>
-        </div>
-        <div className="px-5 py-4">
-          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-ink-faint">Avg interview SLA</p>
-          <p className="mt-1 text-2xl font-black tabular-nums text-ink">{avgSla} hrs</p>
-        </div>
-        <div className="px-5 py-4">
-          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-ink-faint">Seats available</p>
-          <p className="mt-1 text-2xl font-black tabular-nums text-ink">{totalSeats}</p>
-        </div>
+      <div className="mb-8 flex flex-wrap gap-x-10 gap-y-4 border-b border-line pb-6">
+        {[
+          { label: 'Open tracks', value: openTracks },
+          { label: 'Avg interview SLA', value: `${avgSla} hrs` },
+          { label: 'Seats available', value: totalSeats },
+        ].map((s) => (
+          <div key={s.label}>
+            <p className="text-2xl font-black tabular-nums text-ink">{s.value}</p>
+            <p className="mt-0.5 text-xs text-ink-faint">{s.label}</p>
+          </div>
+        ))}
       </div>
 
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -470,7 +409,7 @@ export default function Marketplace() {
           </div>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2 xl:grid-cols-3">
           {visible.map((track) => (
             <TrackCard
               key={track.id}

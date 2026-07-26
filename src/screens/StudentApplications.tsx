@@ -2,7 +2,7 @@
 
 import { useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
-import { Page, Card, Badge, Button, ProgressBar, Eyebrow } from '../components/ui'
+import { Page, Card, Badge, ProgressBar, Eyebrow } from '../components/ui'
 import { CompanyLogo } from '../components/CompanyLogo'
 
 /* ------------------------------------------------------------------ */
@@ -60,51 +60,48 @@ export default function StudentApplications() {
           <p className="mt-1.5 text-sm text-ink-soft">Browse the marketplace and apply to your best matches.</p>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2">
           {apps.map((a) => {
             const meta = STATUS_META[a.status]
             const rem = remaining(a.slaDueAt)
             return (
-              <Card key={a.id} className="flex flex-col p-5">
+              <Card key={a.id} className="flex flex-col p-6">
                 <div className="flex items-start gap-3">
-                  <CompanyLogo slug={a.orgSlug} name={a.org} className="h-11 w-11" />
+                  <CompanyLogo slug={a.orgSlug} name={a.org} className="h-10 w-10" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-semibold text-ink">{a.org}</p>
+                      <p className="truncate text-sm font-semibold text-ink">{a.org}</p>
                       <Badge tone={meta.tone}>{meta.label}</Badge>
                     </div>
                     <h3 className="mt-1 text-base font-bold leading-snug tracking-tight text-ink">{a.trackTitle}</h3>
                   </div>
                 </div>
 
-                <div className="mt-4">
+                <div className="mt-5">
                   <div className="mb-1.5 flex items-baseline justify-between">
-                    <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-faint">Your fit</span>
-                    <span className="text-sm font-bold tabular-nums text-ink">{a.matchScore}%</span>
+                    <span className="text-xs text-ink-faint">Your fit</span>
+                    <span className="text-sm font-semibold tabular-nums text-ink">{a.matchScore}%</span>
                   </div>
-                  <ProgressBar value={a.matchScore} tone={matchTone(a.matchScore)} />
+                  <ProgressBar value={a.matchScore} tone={matchTone(a.matchScore)} height="h-1" />
                 </div>
 
-                {(a.availability || a.note) && (
-                  <div className="mt-3 rounded-[2px] border border-line bg-paper px-3 py-2.5">
-                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-ink-faint">
-                      {a.availability && <span><span className="font-semibold">Availability:</span> {a.availability}</span>}
-                      {a.hoursPerWeek > 0 && <span><span className="font-semibold">Commits:</span> {a.hoursPerWeek} hrs/wk</span>}
-                    </div>
-                    {a.note && <p className="mt-1.5 line-clamp-2 text-xs italic leading-relaxed text-ink-soft">"{a.note}"</p>}
-                  </div>
+                {a.note && (
+                  <p className="mt-4 line-clamp-2 text-xs italic leading-relaxed text-ink-soft">"{a.note}"</p>
+                )}
+                {(a.availability || a.hoursPerWeek > 0) && (
+                  <p className="mt-2 text-xs text-ink-faint">
+                    {[a.availability, a.hoursPerWeek > 0 ? `${a.hoursPerWeek} hrs/wk` : ''].filter(Boolean).join('  ·  ')}
+                  </p>
                 )}
 
-                <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-4 text-xs">
+                <div className="mt-auto flex items-center justify-between gap-3 pt-6 text-xs">
                   <span className="text-ink-faint">Applied {appliedLabel(a.appliedAt)}</span>
                   {a.status === 'pending' ? (
-                    <span className={`font-semibold ${rem < 16 ? 'text-danger' : 'text-ink-soft'}`}>
+                    <span className={`${rem < 16 ? 'text-gold-ink font-medium' : 'text-ink-faint'}`}>
                       Interview within {rem}h
                     </span>
                   ) : a.status === 'accepted' ? (
-                    <Button size="sm" variant="secondary" disabled>
-                      ✓ Interviewing
-                    </Button>
+                    <span className="font-semibold text-success-ink">✓ Interviewing</span>
                   ) : (
                     <span className="text-ink-faint">Closed</span>
                   )}
