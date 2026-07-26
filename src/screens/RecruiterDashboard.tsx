@@ -26,6 +26,7 @@ type Program = {
   weeklyHours: number
   slaHours: number
   cap: number
+  deliverables: string[]
   applicants: number
   enrolled: number
   avgFit: number | null
@@ -150,8 +151,13 @@ function TrackEditModal({
   const [durationWeeks, setDurationWeeks] = useState(String(program.durationWeeks))
   const [slaHours, setSlaHours] = useState(String(program.slaHours))
   const [intensity, setIntensity] = useState<Intensity>(program.intensity)
+  const [deliverables, setDeliverables] = useState<string[]>(program.deliverables.length ? program.deliverables : [''])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  const setDeliverable = (i: number, val: string) => setDeliverables((d) => d.map((x, j) => (j === i ? val : x)))
+  const addDeliverable = () => setDeliverables((d) => [...d, ''])
+  const removeDeliverable = (i: number) => setDeliverables((d) => (d.length > 1 ? d.filter((_, j) => j !== i) : d))
 
   const save = async () => {
     setSaving(true)
@@ -166,6 +172,7 @@ function TrackEditModal({
         durationWeeks: Math.max(1, Math.round(Number(durationWeeks) || program.durationWeeks)),
         slaHours: Math.max(1, Math.round(Number(slaHours) || program.slaHours)),
         intensity,
+        deliverables: deliverables.map((d) => d.trim()).filter(Boolean),
       })
       onClose()
     } catch (e) {
@@ -205,6 +212,20 @@ function TrackEditModal({
               </Select>
             </Field>
           </div>
+
+          <Field label="Deliverables" hint="each becomes a milestone + a mentee's starter task">
+            <div className="space-y-2">
+              {deliverables.map((d, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Input value={d} onChange={(e) => setDeliverable(i, e.target.value)} placeholder={`Deliverable ${i + 1}`} />
+                  {deliverables.length > 1 && (
+                    <button type="button" onClick={() => removeDeliverable(i)} aria-label={`Remove deliverable ${i + 1}`} className="shrink-0 px-2 text-ink-faint transition-colors hover:text-danger">✕</button>
+                  )}
+                </div>
+              ))}
+              <Button variant="secondary" size="sm" onClick={addDeliverable}>+ Add deliverable</Button>
+            </div>
+          </Field>
         </div>
         <div className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
           {error && <span className="mr-auto text-xs font-medium text-danger">{error}</span>}

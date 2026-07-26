@@ -132,6 +132,7 @@ export const forOrgManage = query({
           weeklyHours: t.weeklyHours,
           slaHours: t.slaHours,
           cap: t.cap,
+          deliverables: t.deliverables,
           applicants: t.applicants + apps.length,
           enrolled: enrollments.length,
           avgFit,
@@ -160,6 +161,7 @@ export const update = mutation({
     durationWeeks: v.optional(v.number()),
     intensity: v.optional(INTENSITY),
     requiredSkills: v.optional(v.array(skill)),
+    deliverables: v.optional(v.array(v.string())),
   },
   handler: async (ctx, a) => {
     const org = await myOrg(ctx)
@@ -168,16 +170,28 @@ export const update = mutation({
     if (!track) throw new ConvexError('Track not found')
     if (track.orgSlug !== org.slug) throw new ConvexError('That track belongs to another company')
 
+    const durationWeeks = a.durationWeeks ?? track.durationWeeks
+    // Editing the deliverables re-derives the milestone plan (the starter tasks
+    // future mentees receive). Existing mentees keep the tasks they already have.
+    const deliverables = a.deliverables ? a.deliverables.map((d) => d.trim()).filter(Boolean) : null
+    const spacing = deliverables ? Math.max(1, Math.floor(durationWeeks / Math.max(deliverables.length, 1))) : 0
+    const milestones = deliverables
+      ? deliverables.map((d, i) => ({ id: `m${i + 1}`, week: Math.min(durationWeeks, (i + 1) * spacing), title: d, detail: d }))
+      : track.milestones
+
     await ctx.db.patch(a.trackId, {
       title: a.title ?? track.title,
       summary: a.summary ?? track.summary,
       cap: a.cap ?? track.cap,
       slaHours: a.slaHours ?? track.slaHours,
       weeklyHours: a.weeklyHours ?? track.weeklyHours,
-      durationWeeks: a.durationWeeks ?? track.durationWeeks,
+      durationWeeks,
       intensity: a.intensity ?? track.intensity,
       requiredSkills: a.requiredSkills ?? track.requiredSkills,
       interestTags: a.requiredSkills ? a.requiredSkills.map((s) => s.name) : track.interestTags,
+      deliverables: deliverables ?? track.deliverables,
+      objectives: deliverables ?? track.objectives,
+      milestones,
     })
   },
 })
