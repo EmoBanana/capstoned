@@ -59,25 +59,41 @@ function Monogram({ initials, size = 'md' }: { initials: string; size?: 'md' | '
   )
 }
 
-/** One task with a full status control + editable per-task mentor feedback. */
+/** A task with a status control, an Edit (the task itself) and a Comment
+ *  (mentor feedback the mentee sees). */
 function TaskRow({
   task,
   mentorName,
   onStatus,
-  onNote,
+  onEditTask,
+  onComment,
 }: {
   task: { id: string; title: string; status: string; dueLabel?: string; mentorNote?: string }
   mentorName: string
   onStatus: (status: TaskStatus) => void
-  onNote: (note: string) => void
+  onEditTask: (title: string) => void
+  onComment: (note: string) => void
 }) {
-  const [editing, setEditing] = useState(false)
-  const [draft, setDraft] = useState(task.mentorNote ?? '')
+  const [mode, setMode] = useState<'none' | 'title' | 'comment'>('none')
+  const [titleDraft, setTitleDraft] = useState(task.title)
+  const [noteDraft, setNoteDraft] = useState(task.mentorNote ?? '')
+  // A seeded note that just repeats the task title isn't a real comment.
+  const hasComment = Boolean(task.mentorNote && task.mentorNote.trim() !== task.title.trim())
 
   return (
     <div className="rounded-[2px] border border-line bg-white px-4 py-3.5">
       <div className="flex items-start justify-between gap-3">
-        <p className={`text-sm font-semibold text-ink ${task.status === 'done' ? 'line-through opacity-60' : ''}`}>{task.title}</p>
+        {mode === 'title' ? (
+          <div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center">
+            <Input value={titleDraft} onChange={(e) => setTitleDraft(e.target.value)} aria-label="Task title" />
+            <div className="flex shrink-0 gap-2">
+              <Button size="sm" disabled={titleDraft.trim().length < 2} onClick={() => { onEditTask(titleDraft.trim()); setMode('none') }}>Save</Button>
+              <Button size="sm" variant="ghost" onClick={() => { setTitleDraft(task.title); setMode('none') }}>Cancel</Button>
+            </div>
+          </div>
+        ) : (
+          <p className={`text-sm font-semibold text-ink ${task.status === 'done' ? 'line-through opacity-60' : ''}`}>{task.title}</p>
+        )}
         <select
           value={task.status}
           onChange={(e) => onStatus(e.target.value as TaskStatus)}
@@ -90,32 +106,42 @@ function TaskRow({
         </select>
       </div>
 
-      {task.dueLabel && (
+      {task.dueLabel && mode !== 'title' && (
         <div className="mt-2">
           <span className={`text-[11px] font-bold uppercase tracking-[0.06em] tabular-nums ${task.status === 'blocked' ? 'text-danger-ink' : 'text-ink-faint'}`}>{task.dueLabel}</span>
         </div>
       )}
 
-      {editing ? (
-        <div className="mt-3">
-          <Textarea rows={2} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Feedback on this task — the mentee sees it." />
-          <div className="mt-2 flex gap-2">
-            <Button size="sm" onClick={() => { onNote(draft); setEditing(false) }}>Save note</Button>
-            <Button size="sm" variant="ghost" onClick={() => { setDraft(task.mentorNote ?? ''); setEditing(false) }}>Cancel</Button>
-          </div>
-        </div>
-      ) : task.mentorNote ? (
+      {/* Existing comment (mentor feedback) */}
+      {mode !== 'comment' && hasComment && (
         <div className="mt-3 border-l-2 border-gold/40 bg-gold-soft/40 px-3 py-2">
           <div className="flex items-center justify-between gap-2">
-            <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-ink-faint">Mentor note · {mentorName}</div>
-            <button type="button" onClick={() => { setDraft(task.mentorNote ?? ''); setEditing(true) }} className="shrink-0 text-[11px] font-semibold text-ink-faint transition-colors hover:text-ink">Edit</button>
+            <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-ink-faint">Comment · {mentorName}</div>
+            <button type="button" onClick={() => { setNoteDraft(task.mentorNote ?? ''); setMode('comment') }} className="shrink-0 text-[11px] font-semibold text-ink-faint transition-colors hover:text-ink">Edit</button>
           </div>
           <p className="mt-0.5 text-xs leading-relaxed text-ink-soft">{task.mentorNote}</p>
         </div>
-      ) : (
-        <button type="button" onClick={() => { setDraft(''); setEditing(true) }} className="mt-3 text-xs font-semibold text-slate transition-colors hover:text-ink">
-          + Add feedback
-        </button>
+      )}
+
+      {/* Comment editor */}
+      {mode === 'comment' && (
+        <div className="mt-3">
+          <Textarea rows={2} value={noteDraft} onChange={(e) => setNoteDraft(e.target.value)} placeholder="Feedback on this task — the mentee sees it." />
+          <div className="mt-2 flex gap-2">
+            <Button size="sm" onClick={() => { onComment(noteDraft); setMode('none') }}>Save comment</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setNoteDraft(task.mentorNote ?? ''); setMode('none') }}>Cancel</Button>
+          </div>
+        </div>
+      )}
+
+      {/* Actions */}
+      {mode === 'none' && (
+        <div className="mt-3 flex items-center gap-4 text-xs">
+          <button type="button" onClick={() => { setTitleDraft(task.title); setMode('title') }} className="font-semibold text-ink-faint transition-colors hover:text-ink">Edit</button>
+          {!hasComment && (
+            <button type="button" onClick={() => { setNoteDraft(''); setMode('comment') }} className="font-semibold text-slate transition-colors hover:text-ink">Add comment</button>
+          )}
+        </div>
       )}
     </div>
   )
@@ -128,6 +154,7 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
   const setStanding = useMutation(api.enrollments.setStatus)
   const setTaskStatus = useMutation(api.tasks.setStatus)
   const setTaskNote = useMutation(api.tasks.setNote)
+  const editTask = useMutation(api.tasks.edit)
   const addTask = useMutation(api.tasks.add)
   const advanceWeek = useMutation(api.enrollments.advanceWeek)
   const logHours = useMutation(api.enrollments.logHours)
@@ -330,7 +357,8 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
               task={t}
               mentorName={mentee.mentorName}
               onStatus={(status) => void setTaskStatus({ taskId: t.id as Id<'tasks'>, status })}
-              onNote={(note) => void setTaskNote({ taskId: t.id as Id<'tasks'>, note })}
+              onEditTask={(title) => void editTask({ taskId: t.id as Id<'tasks'>, title })}
+              onComment={(note) => void setTaskNote({ taskId: t.id as Id<'tasks'>, note })}
             />
           ))}
 

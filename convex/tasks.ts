@@ -77,7 +77,20 @@ export const setStatus = mutation({
   },
 })
 
-/** Mentor sets (or clears) the note/feedback on a specific task. */
+/** Mentor edits the task itself (its title, and optionally its due label). */
+export const edit = mutation({
+  args: { taskId: v.id('tasks'), title: v.string(), dueLabel: v.optional(v.string()) },
+  handler: async (ctx, { taskId, title, dueLabel }) => {
+    const clean = title.trim()
+    if (!clean) throw new ConvexError('Task title required')
+    await ctx.db.patch(taskId, {
+      title: clean,
+      ...(dueLabel !== undefined ? { dueLabel: dueLabel.trim() || undefined } : {}),
+    })
+  },
+})
+
+/** Mentor sets (or clears) the comment/feedback on a specific task. */
 export const setNote = mutation({
   args: { taskId: v.id('tasks'), note: v.string() },
   handler: async (ctx, { taskId, note }) => {
