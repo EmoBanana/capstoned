@@ -432,7 +432,13 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
 export default function Mentees() {
   const org = useQuery(api.organizations.mine)
   const orgSlug = org?.slug
-  const data = useQuery(api.enrollments.menteesForOrg, orgSlug ? { orgSlug } : 'skip')
+  const manage = useQuery(api.tracks.forOrgManage)
+  const tracks = manage?.programs ?? []
+  const [trackId, setTrackId] = useState<string | null>(null)
+  const data = useQuery(
+    api.enrollments.menteesForOrg,
+    orgSlug ? { orgSlug, trackId: trackId ? (trackId as Id<'tracks'>) : undefined } : 'skip',
+  )
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   if (data === undefined) {
@@ -445,25 +451,27 @@ export default function Mentees() {
     )
   }
   const mentees: MenteeData[] = data?.mentees ?? []
-  if (mentees.length === 0) {
-    return (
-      <Page>
-        <Card className="px-6 py-16 text-center">
-          <p className="text-sm font-semibold text-ink">No enrolled mentees yet.</p>
-          <p className="mt-1.5 text-sm text-ink-soft">Accept applicants to start mentoring them.</p>
-        </Card>
-      </Page>
-    )
-  }
-
-  const selected = mentees.find((m) => m.enrollmentId === selectedId) ?? mentees[0]
+  const selected = mentees.find((m) => m.enrollmentId === selectedId) ?? mentees[0] ?? null
 
   return (
     <Page>
       <div className="flex flex-col gap-4 border-b border-line pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Eyebrow>Company · Mentees</Eyebrow>
-          <h1 className="mt-2 text-2xl font-black tracking-tight text-ink sm:text-3xl">Enrolled mentees</h1>
+          {tracks.length > 1 ? (
+            <select
+              value={trackId ?? tracks[0]?.id ?? ''}
+              onChange={(e) => { setTrackId(e.target.value); setSelectedId(null) }}
+              aria-label="Choose a track"
+              className="mt-2 max-w-full border border-line-strong bg-cream px-2.5 py-1.5 text-2xl font-black tracking-tight text-ink rounded-[2px] focus:border-ink focus:outline-none sm:text-3xl"
+            >
+              {tracks.map((t) => (
+                <option key={t.id} value={t.id}>{t.title}</option>
+              ))}
+            </select>
+          ) : (
+            <h1 className="mt-2 text-2xl font-black tracking-tight text-ink sm:text-3xl">Enrolled mentees</h1>
+          )}
           <p className="mt-1 text-sm font-medium text-ink-soft">
             {data?.trackTitle} · {org?.name ?? '…'} · {data?.totalWeeks}-week track
           </p>
@@ -477,6 +485,12 @@ export default function Mentees() {
         </div>
       </div>
 
+      {mentees.length === 0 || !selected ? (
+        <Card className="mt-6 px-6 py-16 text-center">
+          <p className="text-sm font-semibold text-ink">No enrolled mentees on this track yet.</p>
+          <p className="mt-1.5 text-sm text-ink-soft">Accept applicants to start mentoring them.</p>
+        </Card>
+      ) : (
       <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[320px_1fr]">
         <div>
           <div className="mb-3 flex items-baseline justify-between">
@@ -521,6 +535,7 @@ export default function Mentees() {
           <MenteeDetail mentee={selected} trackTitle={data?.trackTitle ?? ''} key={selected.enrollmentId} />
         </div>
       </div>
+      )}
     </Page>
   )
 }

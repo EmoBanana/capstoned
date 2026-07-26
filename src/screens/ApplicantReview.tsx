@@ -240,7 +240,13 @@ function DecisionCard({
 export default function ApplicantReview() {
   const org = useQuery(api.organizations.mine)
   const orgSlug = org?.slug
-  const data = useQuery(api.applications.forOrg, orgSlug ? { orgSlug } : 'skip')
+  const manage = useQuery(api.tracks.forOrgManage)
+  const tracks = manage?.programs ?? []
+  const [trackId, setTrackId] = useState<string | null>(null)
+  const data = useQuery(
+    api.applications.forOrg,
+    orgSlug ? { orgSlug, trackId: trackId ? (trackId as Id<'tracks'>) : undefined } : 'skip',
+  )
   const setStatus = useMutation(api.applications.setStatus)
   const propose = useMutation(api.applications.proposeInterview)
   const confirm = useMutation(api.applications.confirmInterview)
@@ -294,9 +300,22 @@ export default function ApplicantReview() {
       <div className="flex flex-col gap-4 border-b border-line pb-6 sm:flex-row sm:items-start sm:justify-between">
         <div>
           <Eyebrow>Applicant Review</Eyebrow>
-          <h1 className="mt-2 text-2xl font-black tracking-tight text-ink sm:text-3xl">
-            {data?.trackTitle ?? 'Your track'}
-          </h1>
+          {tracks.length > 1 ? (
+            <select
+              value={trackId ?? tracks[0]?.id ?? ''}
+              onChange={(e) => setTrackId(e.target.value)}
+              aria-label="Choose a track to review"
+              className="mt-2 max-w-full border border-line-strong bg-cream px-2.5 py-1.5 text-2xl font-black tracking-tight text-ink rounded-[2px] focus:border-ink focus:outline-none sm:text-3xl"
+            >
+              {tracks.map((t) => (
+                <option key={t.id} value={t.id}>{t.title}</option>
+              ))}
+            </select>
+          ) : (
+            <h1 className="mt-2 text-2xl font-black tracking-tight text-ink sm:text-3xl">
+              {data?.trackTitle ?? 'Your track'}
+            </h1>
+          )}
           <p className="mt-1 text-sm font-medium text-ink-soft">{org?.name ?? '…'} · Review, interview, then enrol</p>
         </div>
         <div className="flex shrink-0 items-center gap-3">

@@ -187,9 +187,14 @@ export const withdraw = mutation({
 
 /** The review queue for an org's track: track summary + its applicants. */
 export const forOrg = query({
-  args: { orgSlug: v.string() },
-  handler: async (ctx, { orgSlug }) => {
-    const track = (await ctx.db.query('tracks').collect()).find((t) => t.orgSlug === orgSlug)
+  args: { orgSlug: v.string(), trackId: v.optional(v.id('tracks')) },
+  handler: async (ctx, { orgSlug, trackId }) => {
+    // A company can run several tracks. Show the requested one, or default to
+    // the first so existing callers (and single-track companies) are unchanged.
+    const orgTracks = (await ctx.db.query('tracks').collect()).filter((t) => t.orgSlug === orgSlug)
+    const track = trackId
+      ? orgTracks.find((t) => (t._id as string) === (trackId as string)) ?? null
+      : (orgTracks[0] ?? null)
     if (!track) return null
 
     const apps = await ctx.db
