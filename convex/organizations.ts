@@ -148,6 +148,16 @@ export const claimable = query({
   args: {},
   handler: async (ctx) => {
     const orgs = await ctx.db.query('organizations').collect()
-    return orgs.map((o) => ({ name: o.name, slug: o.slug, brandColor: o.brandColor }))
+    // Talentbank first, Gamuda second, everything else after in name order.
+    const rank = (slug: string) => (slug === 'talentbank' ? 0 : slug.startsWith('gamuda') ? 1 : 2)
+    orgs.sort((a, b) => rank(a.slug) - rank(b.slug) || a.name.localeCompare(b.name))
+    return Promise.all(
+      orgs.map(async (o) => ({
+        name: o.name,
+        slug: o.slug,
+        brandColor: o.brandColor,
+        logoUrl: o.logoStorageId ? await ctx.storage.getUrl(o.logoStorageId) : null,
+      })),
+    )
   },
 })

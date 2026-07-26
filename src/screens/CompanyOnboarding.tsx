@@ -29,6 +29,9 @@ export default function CompanyOnboarding() {
   const [error, setError] = useState<string | null>(null)
 
   const valid = name.trim().length >= 2
+  // Joining an existing company (picked from the list, or typed an exact match)
+  // vs. creating a brand-new one — changes the copy throughout.
+  const joining = Boolean(claimable?.some((c) => c.name.toLowerCase() === name.trim().toLowerCase()))
 
   const submit = async () => {
     setSaving(true)
@@ -46,9 +49,13 @@ export default function CompanyOnboarding() {
     <Page>
       <header className="mb-6">
         <Eyebrow>Welcome · Set up your company</Eyebrow>
-        <h1 className="mt-2 text-3xl font-black tracking-tight text-ink sm:text-4xl">Create your company profile</h1>
+        <h1 className="mt-2 text-3xl font-black tracking-tight text-ink sm:text-4xl">
+          {joining ? `Join ${name.trim()} as a mentor` : 'Create your company profile'}
+        </h1>
         <p className="mt-2 max-w-2xl text-sm text-ink-soft">
-          This is the company candidates see and apply to. Every track you publish and every applicant you review belongs to it.
+          {joining
+            ? "You'll join this company's team of mentors and share its tracks, applicants, and mentees."
+            : 'This is the company candidates see and apply to. Every track you publish and every applicant you review belongs to it.'}
         </p>
       </header>
 
@@ -66,7 +73,7 @@ export default function CompanyOnboarding() {
                   name === c.name ? 'border-ink bg-ink text-cream' : 'border-line-strong bg-white text-ink-soft hover:border-ink hover:text-ink'
                 }`}
               >
-                <CompanyLogo slug={c.slug} name={c.name} className="h-5 w-5" />
+                <CompanyLogo slug={c.slug} name={c.name} logoUrl={c.logoUrl} className="h-5 w-5" />
                 {c.name}
               </button>
             ))}
@@ -105,7 +112,7 @@ export default function CompanyOnboarding() {
             {error ? <span className="font-medium text-danger">{error}</span> : 'Candidates apply to your company, not the platform.'}
           </p>
           <Button disabled={!valid || saving} onClick={submit}>
-            {saving ? 'Saving…' : 'Create company & continue'}
+            {saving ? 'Saving…' : joining ? 'Join as mentor' : 'Create company & continue'}
           </Button>
         </div>
       </Card>
