@@ -27,6 +27,12 @@ export function Header({
         </Link>
 
         <div className="flex items-center gap-2 sm:gap-3">
+          <Link
+            href="/university/dashboard"
+            className="hidden px-3 py-2 text-sm font-semibold text-ink-soft transition-colors duration-150 hover:text-ink sm:inline-flex"
+          >
+            For universities
+          </Link>
           {onSignIn ? (
             <button
               type="button"
