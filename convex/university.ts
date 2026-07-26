@@ -13,12 +13,11 @@ import type { Doc, Id } from './_generated/dataModel'
 
 type Engagement = 'on-track' | 'needs-nudge' | 'at-risk'
 
-type StudentRow = {
-  id: string
-  name: string
-  program: string
+// Internal-only, never returned. Holds just the aggregate-relevant signals for
+// a single student so cohorts can be counted. No name, email, or id leaves the
+// query: this is a PUBLIC route and must not identify individual students.
+type StudentSignal = {
   animalKey: string
-  reliabilityScore: number
   engagement: Engagement
   exploring: boolean
   enrolled: boolean
@@ -38,7 +37,6 @@ type Cohort = {
   mismatchAverted: number
   interests: Distribution[]
   animals: Distribution[]
-  attention: StudentRow[]
 }
 
 type Summary = {
@@ -52,7 +50,6 @@ type Summary = {
   mismatchAverted: number
   interests: Distribution[]
   animals: Distribution[]
-  attention: StudentRow[]
 }
 
 /**
@@ -125,18 +122,14 @@ export const insights = query({
       if (!enrollByCandidate.has(key)) enrollByCandidate.set(key, e)
     }
 
-    const rows: StudentRow[] = await Promise.all(
+    const rows: StudentSignal[] = await Promise.all(
       candidates.map(async (c) => {
         const key = c._id as string
         const apps = appsByCandidate.get(key) ?? []
         const enrollment = enrollByCandidate.get(key)
         const blocked = enrollment ? await anyBlockedTask(ctx, enrollment._id) : false
         return {
-          id: key,
-          name: c.name,
-          program: c.program,
           animalKey: c.animalKey,
-          reliabilityScore: c.reliabilityScore,
           engagement: engagementFor(enrollment, apps, blocked),
           exploring: apps.length > 0,
           enrolled: enrollment !== undefined,
@@ -145,7 +138,7 @@ export const insights = query({
       }),
     )
 
-    const byUniversity = new Map<string, { candidate: Doc<'candidates'>; row: StudentRow }[]>()
+    const byUniversity = new Map<string, { candidate: Doc<'candidates'>; row: StudentSignal }[]>()
     candidates.forEach((candidate, i) => {
       const row = rows[i]
       const list = byUniversity.get(row.university)
@@ -179,11 +172,6 @@ export const insights = query({
           if (row.exploring && !row.enrolled) mismatchAverted++
         }
 
-        const attention = members
-          .map((m) => m.row)
-          .filter((r) => r.engagement !== 'on-track')
-          .sort((a, b) => rank(b.engagement) - rank(a.engagement) || a.reliabilityScore - b.reliabilityScore)
-
         return {
           university,
           totalComplete: members.length,
@@ -195,7 +183,6 @@ export const insights = query({
           mismatchAverted,
           interests: topDistribution(interests),
           animals: topDistribution(animals),
-          attention,
         }
       })
       .sort((a, b) => b.totalComplete - a.totalComplete || a.university.localeCompare(b.university))
@@ -219,16 +206,8 @@ export const insights = query({
       mismatchAverted: rows.filter((r) => r.exploring && !r.enrolled).length,
       interests: topDistribution(interestsAll),
       animals: topDistribution(animalsAll),
-      attention: rows
-        .filter((r) => r.engagement !== 'on-track')
-        .sort((a, b) => rank(b.engagement) - rank(a.engagement) || a.reliabilityScore - b.reliabilityScore),
     }
 
     return { summary, cohorts }
   },
 })
-
-/** At-risk sorts above needs-nudge in attention lists. */
-function rank(e: Engagement): number {
-  return e === 'at-risk' ? 2 : e === 'needs-nudge' ? 1 : 0
-}

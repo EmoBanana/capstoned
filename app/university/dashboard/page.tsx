@@ -26,6 +26,16 @@ const ENGAGEMENT_TONE: Record<Engagement, 'success' | 'gold' | 'danger'> = {
   'at-risk': 'danger',
 }
 
+const ENGAGEMENT_ORDER: Engagement[] = ['on-track', 'needs-nudge', 'at-risk']
+
+type EngagementCounts = { onTrack: number; needsNudge: number; atRisk: number }
+
+const ENGAGEMENT_COUNT: Record<Engagement, (c: EngagementCounts) => number> = {
+  'on-track': (c) => c.onTrack,
+  'needs-nudge': (c) => c.needsNudge,
+  'at-risk': (c) => c.atRisk,
+}
+
 function animalName(key: string): string {
   return ANIMALS[key as AnimalKey]?.name ?? key
 }
@@ -132,7 +142,7 @@ export default function UniversityDashboardPage() {
 
       {/* Impact row */}
       <div className="mt-10 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="bg-ink p-6 text-cream">
+        <div className="rounded-[2px] border border-ink bg-ink p-6 text-cream">
           <div className="flex items-center gap-2">
             <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-cream/70">
               Mismatch averted
@@ -146,7 +156,7 @@ export default function UniversityDashboardPage() {
             Students who explored a track but stepped away before committing to a mentorship. The
             fit gap surfaced early, at low cost.
           </p>
-        </Card>
+        </div>
         <StatTile
           label="Students tracked"
           value={summary.totalStudents}
@@ -236,41 +246,33 @@ export default function UniversityDashboardPage() {
         </div>
       </div>
 
-      {/* Attention list + distributions */}
+      {/* Aggregate engagement + distributions */}
       <div className="mt-12 grid gap-6 lg:grid-cols-3">
         <Card className="p-6 lg:col-span-2">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-lg font-bold tracking-tight text-ink">Students to check in with</h2>
-            <Badge tone="neutral">{summary.attention.length}</Badge>
+            <h2 className="text-lg font-bold tracking-tight text-ink">Engagement breakdown</h2>
+            <Badge tone="neutral">{summary.totalStudents} tracked</Badge>
           </div>
           <p className="mt-2 text-sm text-ink-soft">
-            Sorted by urgency. At-risk students are enrolled but struggling. A nudge means they have
-            stalled or have not started exploring.
+            Anonymised counts across every cohort. No individual students are identified on this
+            public view. At risk means enrolled but struggling. A nudge means stalled or not yet
+            exploring.
           </p>
-          {summary.attention.length === 0 ? (
-            <p className="mt-6 text-sm text-ink-soft">
-              Every tracked student is on track. Nothing needs attention right now.
-            </p>
-          ) : (
-            <ul className="mt-5 divide-y divide-line border-t border-line">
-              {summary.attention.slice(0, 12).map((s) => (
-                <li key={s.id} className="flex items-center justify-between gap-4 py-3">
-                  <div className="min-w-0">
-                    <div className="truncate text-sm font-semibold text-ink">{s.name}</div>
-                    <div className="mt-0.5 truncate text-xs text-ink-faint">
-                      {s.program || 'Program not set'} · {s.university}
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-3">
-                    <span className="hidden text-xs tabular-nums text-ink-faint sm:inline">
-                      Reliability {s.reliabilityScore}
-                    </span>
-                    <Badge tone={ENGAGEMENT_TONE[s.engagement]}>{ENGAGEMENT_LABEL[s.engagement]}</Badge>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
+          <div className="mt-6 space-y-4">
+            {ENGAGEMENT_ORDER.map((key) => (
+              <OutcomeRow
+                key={key}
+                label={ENGAGEMENT_LABEL[key]}
+                value={ENGAGEMENT_COUNT[key](summary)}
+                total={summary.totalStudents}
+                tone={ENGAGEMENT_TONE[key]}
+              />
+            ))}
+          </div>
+          <p className="mt-6 border-t border-line pt-4 text-xs leading-relaxed text-ink-faint">
+            Every figure here is a group total. Student-level detail stays with the institution
+            under a data agreement, never on this page.
+          </p>
         </Card>
 
         <Card className="p-6">
@@ -295,6 +297,36 @@ export default function UniversityDashboardPage() {
           <DistributionBars rows={summary.interests.slice(Math.ceil(summary.interests.length / 2))} />
         </div>
       </Card>
+
+      {/* Contact and collaboration */}
+      <div className="mt-6 rounded-[2px] border border-ink bg-ink p-8 text-cream sm:p-10">
+        <div className="grid items-center gap-8 lg:grid-cols-[1.5fr_1fr]">
+          <div>
+            <Eyebrow className="text-gold">Work with us</Eyebrow>
+            <h2 className="mt-4 text-2xl font-black leading-tight tracking-tight sm:text-3xl">
+              Detailed cohort reporting lives with your institution.
+            </h2>
+            <p className="mt-4 max-w-xl text-sm leading-relaxed text-cream/70">
+              This page shows anonymised group totals only. Student-level insight, named cohort
+              breakdowns, and program-by-program reporting are shared directly with your institution
+              under a proper data agreement.
+            </p>
+            <p className="mt-3 max-w-xl text-sm leading-relaxed text-cream/70">
+              Want the full picture, or interested in partnering with us? Get in touch and we will
+              set up secure access for your team.
+            </p>
+          </div>
+          <div className="flex flex-col gap-3 lg:items-end">
+            <a
+              href="mailto:partnerships@capstoned.app?subject=University%20partnership"
+              className="inline-flex w-full items-center justify-center gap-2 rounded-[2px] border border-cream bg-cream px-6 py-3 text-sm font-semibold text-ink transition-colors duration-150 hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-cream/50 focus-visible:ring-offset-2 focus-visible:ring-offset-ink sm:w-auto"
+            >
+              Contact partnerships
+            </a>
+            <span className="text-xs tabular-nums text-cream/50">partnerships@capstoned.app</span>
+          </div>
+        </div>
+      </div>
     </Page>
   )
 }
