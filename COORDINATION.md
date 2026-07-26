@@ -16,7 +16,7 @@ Two Claude Code sessions are building this repo in parallel. This file is the sh
 
 ## Shared contract
 - **Roles:** Convex `users.role` and routes stay `student` | `recruiter` (`LegacyRole`). Map to the 3-audience `Role` via `domain.ts` `fromLegacyRole` / `toLegacyRole`. Adding the `university` audience is a coordinated change.
-- **Convex schema is the integration point.** Its tables should mirror `domain.ts` types. Only one session edits `convex/schema.ts` at a time — coordinate before adding data tables (candidates, tracks, cohorts, applications) so we don't both define them.
+- **Convex is owned entirely by Session B.** All of `convex/` (schema + functions + seed) is Session B's, built to mirror `domain.ts` types. Session A stays pure-TS (`src/lib`) + new-audience screens and hands Session B the shapes; Session A does **not** edit `convex/`.
 
 ## Git protocol
 - `git pull --rebase origin main` **before** every push.
@@ -25,4 +25,4 @@ Two Claude Code sessions are building this repo in parallel. This file is the sh
 
 ## Status
 - Live on `main`: Next migration, test suite, flexible duration, Convex client, **auth**, marketplace tracks + logos (Session B). Foundation files committed in `bca65ac` (Session A's WIP).
-- **Open coordination item:** who owns the Convex data layer for candidates/tracks/cohorts as Session A makes mock-data real — Session B has already built `organizations` + `tracks` tables + seed. Decide before either adds more data tables.
+- **RESOLVED:** Session B owns all of `convex/` (schema + seed + queries), mirroring `domain.ts`. Session A stays in `src/lib` and does not touch `convex/`.
