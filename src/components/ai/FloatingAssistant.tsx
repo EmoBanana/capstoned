@@ -63,7 +63,9 @@ function CloseIcon({ className = 'h-4 w-4' }: { className?: string }) {
 export default function FloatingAssistant() {
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
-  const [mounted, setMounted] = useState(false)
+  // Flips true the first time the panel is opened and never returns to false,
+  // so TrackAssistantConnected stays mounted and its transcript survives a close.
+  const [hasOpened, setHasOpened] = useState(false)
 
   const rootRef = useRef<HTMLDivElement>(null)
   const panelRef = useRef<HTMLDivElement>(null)
@@ -91,65 +93,56 @@ export default function FloatingAssistant() {
     }
   }, [])
 
-  // Animate the panel whenever it mounts (open) — scale + autoAlpha from the
-  // bubble corner. Reduced motion: appear instantly, no tween.
+  // Animate the kept-mounted panel's visibility as `open` toggles — scale +
+  // autoAlpha from the bubble corner on show, reverse on hide. Reduced motion:
+  // just toggle visibility with no tween.
   useLayoutEffect(() => {
-    if (!mounted || !panelRef.current || !ctxRef.current) return
+    if (!hasOpened || !panelRef.current || !ctxRef.current) return
     const panel = panelRef.current
     const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
     ctxRef.current.add(() => {
       if (reduce) {
-        gsap.set(panel, { autoAlpha: 1, scale: 1 })
+        gsap.set(panel, { autoAlpha: open ? 1 : 0, scale: 1 })
         return
       }
-      gsap.fromTo(
-        panel,
-        { autoAlpha: 0, scale: 0.85, transformOrigin: 'bottom right' },
-        { autoAlpha: 1, scale: 1, duration: 0.22, ease: 'power2.out' },
-      )
-    })
-  }, [mounted])
-
-  const handleToggle = useCallback(() => {
-    if (open) {
-      // Closing: reverse tween, then unmount. Reduced motion unmounts instantly.
-      const panel = panelRef.current
-      const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches
-      if (!panel || reduce || !ctxRef.current) {
-        setOpen(false)
-        return
-      }
-      ctxRef.current.add(() => {
+      if (open) {
+        gsap.fromTo(
+          panel,
+          { autoAlpha: 0, scale: 0.85, transformOrigin: 'bottom right' },
+          { autoAlpha: 1, scale: 1, duration: 0.22, ease: 'power2.out' },
+        )
+      } else {
         gsap.to(panel, {
           autoAlpha: 0,
           scale: 0.85,
           duration: 0.22,
           ease: 'power2.in',
           transformOrigin: 'bottom right',
-          onComplete: () => setOpen(false),
         })
-      })
+      }
+    })
+  }, [open, hasOpened])
+
+  const handleToggle = useCallback(() => {
+    if (open) {
+      setOpen(false)
     } else {
+      setHasOpened(true)
       setOpen(true)
     }
-  }, [open])
-
-  // Keep `mounted` in sync so the closing tween can play before unmount.
-  useEffect(() => {
-    if (open) setMounted(true)
-    else setMounted(false)
   }, [open])
 
   if (isGatedRoute(pathname)) return null
 
   return (
     <div ref={rootRef}>
-      {mounted && (
+      {hasOpened && (
         <div
           ref={panelRef}
           role="dialog"
           aria-label="Assistant"
-          className="fixed bottom-20 right-5 z-50 flex w-[min(440px,calc(100vw-2.5rem))] flex-col overflow-hidden border border-line-strong bg-paper rounded-[2px] shadow-[0_8px_30px_rgba(26,26,26,0.12)] h-[640px] max-h-[80vh]"
+          aria-hidden={!open}
+          className={`fixed bottom-24 right-5 z-50 flex w-[min(400px,calc(100vw-2.5rem))] flex-col overflow-hidden border border-line-strong bg-paper rounded-[2px] shadow-[0_8px_30px_rgba(26,26,26,0.12)] h-[560px] max-h-[72vh] ${open ? '' : 'pointer-events-none invisible opacity-0'}`}
         >
           <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-cream px-4 py-3">
             <div className="flex min-w-0 items-center gap-2.5">
