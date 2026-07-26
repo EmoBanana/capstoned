@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { Fragment, useMemo, useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import type { Id } from '@/convex/_generated/dataModel'
@@ -82,6 +82,9 @@ type Applicant = {
   matchScore: number
   appliedAt: number
   slaDueAt: number
+  note: string
+  availability: string
+  hoursPerWeek: number
   name: string
   university: string
   program: string
@@ -94,6 +97,13 @@ export default function ApplicantReview() {
   const orgRel = useQuery(api.reliability.orgScore, { orgSlug: ORG_SLUG })
   const setStatus = useMutation(api.applications.setStatus)
   const [sortKey, setSortKey] = useState<SortKey>('match-desc')
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+  const toggle = (id: string) =>
+    setExpanded((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
 
   const now = Date.now()
   const applicants: Applicant[] = data?.applicants ?? []
@@ -234,10 +244,11 @@ export default function ApplicantReview() {
               <tbody>
                 {rows.map((a) => {
                   const decided = a.status !== 'pending'
+                  const isOpen = expanded.has(a.id)
                   return (
+                    <Fragment key={a.id}>
                     <tr
-                      key={a.id}
-                      className={`border-b border-line align-middle transition-colors duration-150 last:border-b-0 ${
+                      className={`border-b border-line align-middle transition-colors duration-150 ${isOpen ? '' : 'border-b'} ${
                         a.status === 'accepted' ? 'bg-success-soft/40' : a.status === 'declined' ? 'bg-paper/60' : 'hover:bg-paper'
                       }`}
                     >
@@ -248,12 +259,14 @@ export default function ApplicantReview() {
                             <div className={`truncate text-sm font-bold text-ink ${a.status === 'declined' ? 'line-through opacity-60' : ''}`}>
                               {a.name}
                             </div>
-                            <div className="mt-1">
-                              <Badge tone="success">
-                                <CheckIcon />
-                                Verified Student
-                              </Badge>
-                            </div>
+                            <button
+                              type="button"
+                              onClick={() => toggle(a.id)}
+                              className="mt-1 text-[11px] font-semibold text-slate hover:text-ink"
+                              aria-expanded={isOpen}
+                            >
+                              {isOpen ? 'Hide application ▴' : 'View application ▾'}
+                            </button>
                           </div>
                         </div>
                       </td>
@@ -310,6 +323,22 @@ export default function ApplicantReview() {
                         </div>
                       </td>
                     </tr>
+                    {isOpen && (
+                      <tr className={`border-b border-line ${a.status === 'accepted' ? 'bg-success-soft/20' : 'bg-paper/40'}`}>
+                        <td colSpan={5} className="px-5 pb-5 pt-0">
+                          <div className="rounded-[2px] border border-line bg-white p-4">
+                            <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-ink-soft">
+                              <span><span className="font-semibold text-ink-faint">Availability:</span> {a.availability || '—'}</span>
+                              <span><span className="font-semibold text-ink-faint">Commits:</span> {a.hoursPerWeek || '—'} hrs/week</span>
+                              <span><span className="font-semibold text-ink-faint">Reliability:</span> {a.reliability}%</span>
+                            </div>
+                            <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.1em] text-ink-faint">Why they're a fit</p>
+                            <p className="mt-1 text-sm leading-relaxed text-ink">{a.note || 'No note provided.'}</p>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                    </Fragment>
                   )
                 })}
               </tbody>

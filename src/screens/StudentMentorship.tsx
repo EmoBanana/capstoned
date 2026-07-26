@@ -5,6 +5,7 @@ import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import type { Id } from '@/convex/_generated/dataModel'
 import { Page, Card, Badge, Button, ProgressBar, Eyebrow } from '../components/ui'
+import MicroBondContract from '../components/MicroBondContract'
 
 /* ------------------------------------------------------------------ */
 /*  Student · My Mentorship — live Convex enrollment: progress, tasks   */
@@ -62,10 +63,14 @@ function StatBlock({ label, value, suffix, bar }: { label: string; value: string
 
 export default function StudentMentorship({ onNavigate }: { onNavigate?: (id: string) => void }) {
   const data = useQuery(api.enrollments.myMentorship)
+  const me = useQuery(api.candidates.current)
   const submitTask = useMutation(api.tasks.submit)
   const sponsorship = useQuery(api.sponsorships.mine)
-  const respondSponsor = useMutation(api.sponsorships.respond)
+  const signContract = useMutation(api.sponsorships.sign)
+  const declineContract = useMutation(api.sponsorships.decline)
   const [banner, setBanner] = useState<string | null>(null)
+  const [showContract, setShowContract] = useState(false)
+  const [signing, setSigning] = useState(false)
 
   if (data === undefined) {
     return (
@@ -141,33 +146,61 @@ export default function StudentMentorship({ onNavigate }: { onNavigate?: (id: st
             <div>
               <div className="flex items-center gap-2">
                 <Eyebrow>Micro-bond offer</Eyebrow>
-                <Badge tone="gold">New</Badge>
+                <Badge tone="gold">Action required</Badge>
               </div>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink">
-                <span className="font-bold">{sponsorship.orgName}</span> offers you a{' '}
+                <span className="font-bold">{sponsorship.orgName}</span> has offered you a{' '}
                 <span className="font-bold tabular-nums">RM {sponsorship.amount.toLocaleString()}</span>{' '}
                 {sponsorship.title} — in exchange for a {sponsorship.commitmentMonths}-month{' '}
-                {sponsorship.commitmentKind === 'contract' ? 'contract' : 'priority-hiring commitment'} once the track completes.
+                {sponsorship.commitmentKind === 'contract' ? 'employment contract' : 'priority-hiring commitment'} once the track completes.
+                Review the full agreement before signing.
               </p>
             </div>
             <div className="flex shrink-0 gap-2">
-              <Button size="sm" onClick={() => void respondSponsor({ sponsorshipId: sponsorship.id as Id<'sponsorships'>, status: 'accepted' })}>
-                Accept offer
-              </Button>
-              <Button size="sm" variant="secondary" onClick={() => void respondSponsor({ sponsorshipId: sponsorship.id as Id<'sponsorships'>, status: 'declined' })}>
-                Decline
+              <Button size="sm" onClick={() => setShowContract(true)}>
+                Review &amp; sign contract
               </Button>
             </div>
           </div>
         </Card>
       )}
-      {sponsorship && sponsorship.status === 'accepted' && (
+      {sponsorship && (sponsorship.status === 'signed' || sponsorship.status === 'accepted') && (
         <Card className="mt-5 border-success/30 bg-success-soft p-4">
-          <p className="text-sm font-medium text-success-ink">
-            ✓ You accepted {sponsorship.orgName}'s micro-bond (RM {sponsorship.amount.toLocaleString()},{' '}
-            {sponsorship.commitmentMonths}-month {sponsorship.commitmentKind}).
-          </p>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm font-medium text-success-ink">
+              ✓ Micro-bond executed — {sponsorship.orgName}, RM {sponsorship.amount.toLocaleString()},{' '}
+              {sponsorship.commitmentMonths}-month {sponsorship.commitmentKind === 'contract' ? 'contract' : 'priority hiring'}
+              {sponsorship.contractNo ? ` · ${sponsorship.contractNo}` : ''}.
+            </p>
+            <Button size="sm" variant="secondary" onClick={() => setShowContract(true)}>
+              View / print contract
+            </Button>
+          </div>
         </Card>
+      )}
+
+      {showContract && sponsorship && (
+        <MicroBondContract
+          sponsorship={sponsorship}
+          studentName={me?.name ?? ''}
+          trackTitle={data.trackTitle}
+          signing={signing}
+          onClose={() => setShowContract(false)}
+          onSign={async (name) => {
+            setSigning(true)
+            try {
+              await signContract({ sponsorshipId: sponsorship.id as Id<'sponsorships'>, signedName: name })
+              setShowContract(false)
+              setBanner(`Micro-bond contract signed. Welcome aboard — ${sponsorship.orgName} has been notified.`)
+            } finally {
+              setSigning(false)
+            }
+          }}
+          onDecline={async () => {
+            await declineContract({ sponsorshipId: sponsorship.id as Id<'sponsorships'> })
+            setShowContract(false)
+          }}
+        />
       )}
 
       {banner && (

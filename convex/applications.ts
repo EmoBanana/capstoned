@@ -1,28 +1,34 @@
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
-import type { QueryCtx } from './_generated/server'
+import type { QueryCtx, MutationCtx } from './_generated/server'
 import { recordEvent } from './reliability'
 
 const STATUS = v.union(v.literal('pending'), v.literal('accepted'), v.literal('declined'))
 
-/** The candidate acting: the signed-in user's profile, else the demo persona. */
-async function resolveCandidate(ctx: QueryCtx) {
+/** The signed-in user's own candidate profile, or null. No demo fallback. */
+async function myCandidate(ctx: QueryCtx | MutationCtx) {
   const userId = await getAuthUserId(ctx)
-  const all = await ctx.db.query('candidates').collect()
-  if (userId) {
-    const linked = all.find((c) => c.userId === userId)
-    if (linked) return linked
-  }
-  return all.find((c) => c.name === 'John Doe') ?? all[0] ?? null
+  if (!userId) return null
+  return await ctx.db
+    .query('candidates')
+    .withIndex('by_user', (q) => q.eq('userId', userId))
+    .first()
 }
 
 /** Student applies to a track. matchScore is the client-computed weighted fit. */
 export const apply = mutation({
-  args: { trackId: v.id('tracks'), matchScore: v.number() },
-  handler: async (ctx, { trackId, matchScore }) => {
-    const candidate = await resolveCandidate(ctx)
-    if (!candidate) throw new Error('No candidate profile')
+  args: {
+    trackId: v.id('tracks'),
+    matchScore: v.number(),
+    note: v.optional(v.string()),
+    availability: v.optional(v.string()),
+    hoursPerWeek: v.optional(v.number()),
+  },
+  handler: async (ctx, { trackId, matchScore, note, availability, hoursPerWeek }) => {
+    const candidate = await myCandidate(ctx)
+    if (!candidate) throw new Error('Complete your profile before applying')
+    if (!candidate.profileComplete) throw new Error('Finish onboarding before applying')
     const track = await ctx.db.get(trackId)
     if (!track) throw new Error('Track not found')
 
@@ -42,6 +48,9 @@ export const apply = mutation({
       matchScore: Math.round(matchScore),
       appliedAt: now,
       slaDueAt: now + track.slaHours * 3600 * 1000,
+      note: (note ?? '').trim(),
+      availability: availability ?? '',
+      hoursPerWeek: hoursPerWeek ?? 0,
     })
   },
 })
@@ -50,7 +59,7 @@ export const apply = mutation({
 export const myTrackIds = query({
   args: {},
   handler: async (ctx) => {
-    const candidate = await resolveCandidate(ctx)
+    const candidate = await myCandidate(ctx)
     if (!candidate) return [] as string[]
     const apps = await ctx.db
       .query('applications')
@@ -64,7 +73,7 @@ export const myTrackIds = query({
 export const mine = query({
   args: {},
   handler: async (ctx) => {
-    const candidate = await resolveCandidate(ctx)
+    const candidate = await myCandidate(ctx)
     if (!candidate) return []
     const apps = await ctx.db
       .query('applications')
@@ -79,6 +88,9 @@ export const mine = query({
           matchScore: a.matchScore,
           appliedAt: a.appliedAt,
           slaDueAt: a.slaDueAt,
+          note: a.note ?? '',
+          availability: a.availability ?? '',
+          hoursPerWeek: a.hoursPerWeek ?? 0,
           trackTitle: track?.title ?? '—',
           org: track?.org ?? '',
           orgSlug: track?.orgSlug ?? '',
@@ -109,6 +121,9 @@ export const forOrg = query({
           matchScore: a.matchScore,
           appliedAt: a.appliedAt,
           slaDueAt: a.slaDueAt,
+          note: a.note ?? '',
+          availability: a.availability ?? '',
+          hoursPerWeek: a.hoursPerWeek ?? 0,
           name: c?.name ?? '—',
           university: c?.university ?? '',
           program: c?.program ?? '',
@@ -122,24 +137,69 @@ export const forOrg = query({
   },
 })
 
+/** Starter tasks drawn from the track's milestone plan, created on acceptance. */
+async function seedEnrollmentTasks(
+  ctx: MutationCtx,
+  enrollmentId: import('./_generated/dataModel').Id<'enrollments'>,
+  milestones: { title: string; detail: string }[],
+) {
+  let order = 0
+  for (const m of milestones.slice(0, 4)) {
+    await ctx.db.insert('tasks', {
+      enrollmentId,
+      title: m.title,
+      status: 'todo',
+      mentorNote: m.detail,
+      order: order++,
+    })
+  }
+}
+
 export const setStatus = mutation({
   args: { applicationId: v.id('applications'), status: STATUS },
   handler: async (ctx, { applicationId, status }) => {
     const app = await ctx.db.get(applicationId)
+    if (!app) return
     await ctx.db.patch(applicationId, { status })
-    if (status === 'accepted' && app) {
-      const track = await ctx.db.get(app.trackId)
-      const org = track ? (await ctx.db.query('organizations').collect()).find((o) => o.slug === track.orgSlug) : null
-      if (org) {
-        const onTime = Date.now() <= app.slaDueAt
-        await recordEvent(
-          ctx,
-          'organization',
-          org._id,
-          onTime ? 1 : -8,
-          onTime ? 'Interviewed an applicant within SLA' : 'Missed the interview SLA',
-        )
-      }
+    if (status !== 'accepted') return
+
+    const track = await ctx.db.get(app.trackId)
+    // Reliability: interviewing within SLA is a positive signal for the org.
+    const org = track ? (await ctx.db.query('organizations').collect()).find((o) => o.slug === track.orgSlug) : null
+    if (org) {
+      const onTime = Date.now() <= app.slaDueAt
+      await recordEvent(
+        ctx,
+        'organization',
+        org._id,
+        onTime ? 1 : -8,
+        onTime ? 'Interviewed an applicant within SLA' : 'Missed the interview SLA',
+      )
     }
+
+    // Accepting creates a REAL enrollment (unless one already exists) so the
+    // mentee + mentorship flow is driven by actual recruiter action, not seed.
+    const dupe = (
+      await ctx.db
+        .query('enrollments')
+        .withIndex('by_candidate', (q) => q.eq('candidateId', app.candidateId))
+        .collect()
+    ).find((e) => e.trackId === app.trackId)
+    if (dupe || !track) return
+
+    const recruiterId = await getAuthUserId(ctx)
+    const recruiter = recruiterId ? await ctx.db.get(recruiterId) : null
+    const enrollmentId = await ctx.db.insert('enrollments', {
+      trackId: app.trackId,
+      candidateId: app.candidateId,
+      mentorName: recruiter?.name || `${track.org} Mentor`,
+      status: 'on-track',
+      weekProgress: 0,
+      totalWeeks: track.durationWeeks,
+      hoursCommitted: 0,
+      fit: app.matchScore,
+      feedback: [],
+    })
+    await seedEnrollmentTasks(ctx, enrollmentId, track.milestones)
   },
 })

@@ -67,18 +67,25 @@ describe('StudentMentorship', () => {
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
   })
 
-  it('accepts a micro-bond offer via the mutation', async () => {
+  it('signs the micro-bond contract via the mutation', async () => {
     const user = userEvent.setup()
     useQueryMock.mockImplementation((ref: unknown) => {
       const name = getFunctionName(ref as Parameters<typeof getFunctionName>[0])
       if (name.includes('enrollments')) return DATA
+      if (name.includes('candidates')) return { name: 'Jane Doe', profileComplete: true }
       if (name.includes('sponsorships'))
-        return { id: 's1', orgName: 'Talentbank', title: 'Early-Talent Micro-Bond', type: 'milestone', amount: 3000, commitmentKind: 'contract', commitmentMonths: 3, status: 'offered' }
+        return { id: 's1', orgName: 'Talentbank', title: 'Early-Talent Micro-Bond', type: 'milestone', amount: 3000, commitmentKind: 'contract', commitmentMonths: 3, status: 'offered', createdAt: 1700000000000, contractNo: null, signedName: null, signedAt: null }
       return undefined
     })
     render(<StudentMentorship />)
     expect(screen.getByText(/Micro-bond offer/i)).toBeInTheDocument()
-    await user.click(screen.getByRole('button', { name: /accept offer/i }))
-    expect(submitSpy).toHaveBeenCalledWith({ sponsorshipId: 's1', status: 'accepted' })
+
+    // Open the contract, sign it, submit.
+    await user.click(screen.getByRole('button', { name: /review & sign contract/i }))
+    expect(screen.getByPlaceholderText(/full legal name/i)).toBeInTheDocument()
+    await user.type(screen.getByPlaceholderText(/full legal name/i), 'Jane Doe')
+    await user.click(screen.getByRole('checkbox'))
+    await user.click(screen.getByRole('button', { name: /sign & submit/i }))
+    expect(submitSpy).toHaveBeenCalledWith({ sponsorshipId: 's1', signedName: 'Jane Doe' })
   })
 })

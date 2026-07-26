@@ -15,6 +15,9 @@ type App = {
   matchScore: number
   appliedAt: number
   slaDueAt: number
+  note: string
+  availability: string
+  hoursPerWeek: number
   trackTitle: string
   org: string
   orgSlug: string
@@ -81,6 +84,16 @@ export default function StudentApplications() {
                   </div>
                   <ProgressBar value={a.matchScore} tone={matchTone(a.matchScore)} />
                 </div>
+
+                {(a.availability || a.note) && (
+                  <div className="mt-3 rounded-[2px] border border-line bg-paper px-3 py-2.5">
+                    <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-[11px] text-ink-faint">
+                      {a.availability && <span><span className="font-semibold">Availability:</span> {a.availability}</span>}
+                      {a.hoursPerWeek > 0 && <span><span className="font-semibold">Commits:</span> {a.hoursPerWeek} hrs/wk</span>}
+                    </div>
+                    {a.note && <p className="mt-1.5 line-clamp-2 text-xs italic leading-relaxed text-ink-soft">"{a.note}"</p>}
+                  </div>
+                )}
 
                 <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-4 text-xs">
                   <span className="text-ink-faint">Applied {appliedLabel(a.appliedAt)}</span>

@@ -1,8 +1,11 @@
 import { internalMutation } from './_generated/server'
 import type { Id } from './_generated/dataModel'
 
-/* Session B owns this data (Session A's mock-data.ts is gone). Shapes mirror
-   src/lib/domain.ts so src/lib/matching.ts computeMatch() runs against it. */
+/* Session B owns this data. The app is REAL: only orgs + tracks + a small pool
+   of standalone applicants on the recruiter's own track are seeded so the demo
+   has something to browse and review. Everything else — profiles, enrollments,
+   mentorship, micro-bonds — is created by real user action, never seeded, and
+   is NEVER attributed to a freshly-registered account. */
 
 const FW = {
   technicalSkills: 0.3,
@@ -39,14 +42,16 @@ type SeedTrack = {
   slaHours: number; closesInDays: number
 }
 
+// `applicants` is a baseline pool of prior applicants; tracks.list adds the LIVE
+// count of real application rows on top, so applying visibly moves the number.
 const TRACKS: SeedTrack[] = [
   {
     title: 'Frontend Architecture Mentorship', org: 'Talentbank', orgSlug: 'talentbank', department: 'Engineering · Web Platform',
     summary: 'Build production UI alongside platform engineers — components, testing, and release workflows.',
     objectives: ['Ship a reusable component to the design system', 'Own a feature end-to-end'],
     deliverables: ['A merged design-system component', 'A shipped, tested feature'],
-    milestones: [ms(2, 'First reviewed PR', 'Merge a small component'), ms(8, 'Feature demo', 'Present an owned feature')],
-    durationWeeks: 12, intensity: 'moderate', weeklyHours: 10, cap: 50, applicants: 50,
+    milestones: [ms(2, 'First reviewed PR', 'Merge a small component'), ms(4, 'Reusable hook', 'Extract shared data-fetching'), ms(8, 'Feature demo', 'Present an owned feature'), ms(12, 'Release', 'Ship to production')],
+    durationWeeks: 12, intensity: 'moderate', weeklyHours: 10, cap: 50, applicants: 12,
     requiredSkills: [rs('React', 0.5, 85), rs('TypeScript', 0.3, 80), rs('Design Systems', 0.2, 75)],
     domainTags: ['Frontend', 'Web'], interestTags: ['UI Engineering', 'Design Systems'], aspirationTags: ['Frontend Engineer', 'Product Engineer'],
     cultureAnimalAffinity: { owl: 80, beaver: 70, peacock: 60 }, factorWeights: FW, slaHours: 48, closesInDays: 3,
@@ -57,7 +62,7 @@ const TRACKS: SeedTrack[] = [
     objectives: ['Improve a high-traffic screen', 'Add maps interactions'],
     deliverables: ['A shipped screen improvement', 'A maps feature prototype'],
     milestones: [ms(3, 'Onboarding PR', 'Land a first change'), ms(9, 'Maps feature', 'Ship a maps interaction')],
-    durationWeeks: 12, intensity: 'moderate', weeklyHours: 10, cap: 50, applicants: 47,
+    durationWeeks: 12, intensity: 'moderate', weeklyHours: 10, cap: 50, applicants: 28,
     requiredSkills: [rs('React', 0.5, 85), rs('TypeScript', 0.3, 80), rs('Maps SDK', 0.2, 70)],
     domainTags: ['Frontend', 'Mobility'], interestTags: ['UI Engineering', 'Maps'], aspirationTags: ['Frontend Engineer', 'Mobile Engineer'],
     cultureAnimalAffinity: { owl: 70, fox: 65, dolphin: 60 }, factorWeights: FW, slaHours: 48, closesInDays: 4,
@@ -68,7 +73,7 @@ const TRACKS: SeedTrack[] = [
     objectives: ['Train a baseline model', 'Deploy an inference endpoint'],
     deliverables: ['A trained model', 'A deployed endpoint'],
     milestones: [ms(1, 'Baseline', 'Reproduce a baseline'), ms(3, 'Deploy', 'Ship inference')],
-    durationWeeks: 4, intensity: 'intense', weeklyHours: 40, cap: 48, applicants: 44,
+    durationWeeks: 4, intensity: 'intense', weeklyHours: 40, cap: 48, applicants: 30,
     requiredSkills: [rs('Python', 0.4, 85), rs('TensorFlow', 0.35, 80), rs('MLOps', 0.25, 70)],
     domainTags: ['AI', 'ML'], interestTags: ['Machine Learning', 'Research'], aspirationTags: ['ML Engineer', 'Researcher'],
     cultureAnimalAffinity: { owl: 85, octopus: 70, eagle: 60 }, factorWeights: FW, slaHours: 24, closesInDays: 4,
@@ -79,7 +84,7 @@ const TRACKS: SeedTrack[] = [
     objectives: ['Add observability to a service', 'Fix a reliability gap'],
     deliverables: ['Dashboards for a service', 'A reliability fix in production'],
     milestones: [ms(2, 'Instrument', 'Add metrics'), ms(10, 'Harden', 'Close a reliability gap')],
-    durationWeeks: 12, intensity: 'moderate', weeklyHours: 8, cap: 40, applicants: 33,
+    durationWeeks: 12, intensity: 'moderate', weeklyHours: 8, cap: 40, applicants: 22,
     requiredSkills: [rs('TypeScript', 0.4, 85), rs('Node.js', 0.35, 80), rs('Distributed Systems', 0.25, 75)],
     domainTags: ['Backend', 'Payments'], interestTags: ['Systems', 'Reliability'], aspirationTags: ['Backend Engineer', 'Platform Engineer'],
     cultureAnimalAffinity: { beaver: 80, ant: 70, tortoise: 65 }, factorWeights: FW, slaHours: 24, closesInDays: 6,
@@ -90,7 +95,7 @@ const TRACKS: SeedTrack[] = [
     objectives: ['Design a service API', 'Optimize a hot path'],
     deliverables: ['A service API', 'A measured performance win'],
     milestones: [ms(1, 'API design', 'Draft the API'), ms(5, 'Optimize', 'Ship a perf win')],
-    durationWeeks: 6, intensity: 'intense', weeklyHours: 40, cap: 45, applicants: 38,
+    durationWeeks: 6, intensity: 'intense', weeklyHours: 40, cap: 45, applicants: 25,
     requiredSkills: [rs('Go', 0.4, 80), rs('PostgreSQL', 0.3, 80), rs('gRPC', 0.3, 70)],
     domainTags: ['Backend', 'Commerce'], interestTags: ['Systems', 'Scalability'], aspirationTags: ['Backend Engineer', 'SRE'],
     cultureAnimalAffinity: { ant: 80, beaver: 70, wolf: 60 }, factorWeights: FW, slaHours: 48, closesInDays: 5,
@@ -101,7 +106,7 @@ const TRACKS: SeedTrack[] = [
     objectives: ['Port a kernel to CUDA', 'Profile and speed up training'],
     deliverables: ['A CUDA kernel', 'A profiling report + speedup'],
     milestones: [ms(2, 'Kernel', 'Port to CUDA'), ms(5, 'Speedup', 'Measured improvement')],
-    durationWeeks: 6, intensity: 'intense', weeklyHours: 40, cap: 48, applicants: 41,
+    durationWeeks: 6, intensity: 'intense', weeklyHours: 40, cap: 48, applicants: 27,
     requiredSkills: [rs('CUDA', 0.4, 80), rs('PyTorch', 0.35, 80), rs('C++', 0.25, 75)],
     domainTags: ['AI', 'HPC'], interestTags: ['Machine Learning', 'Performance'], aspirationTags: ['ML Engineer', 'Systems Engineer'],
     cultureAnimalAffinity: { owl: 80, octopus: 75, eagle: 65 }, factorWeights: FW, slaHours: 48, closesInDays: 4,
@@ -112,7 +117,7 @@ const TRACKS: SeedTrack[] = [
     objectives: ['Run a research study', 'Prototype a flow'],
     deliverables: ['A research summary', 'A clickable prototype'],
     milestones: [ms(2, 'Research', 'Interview users'), ms(8, 'Prototype', 'Ship a prototype')],
-    durationWeeks: 10, intensity: 'light', weeklyHours: 8, cap: 30, applicants: 22,
+    durationWeeks: 10, intensity: 'light', weeklyHours: 8, cap: 30, applicants: 14,
     requiredSkills: [rs('Figma', 0.4, 75), rs('UX Research', 0.35, 70), rs('Prototyping', 0.25, 70)],
     domainTags: ['Design', 'Product'], interestTags: ['Design', 'User Research'], aspirationTags: ['Product Designer', 'UX Researcher'],
     cultureAnimalAffinity: { peacock: 85, dolphin: 70, fox: 60 }, factorWeights: FW, slaHours: 72, closesInDays: 9,
@@ -123,7 +128,7 @@ const TRACKS: SeedTrack[] = [
     objectives: ['Design a public API', 'Ship a developer tool'],
     deliverables: ['A documented API', 'A developer CLI/tool'],
     milestones: [ms(3, 'API', 'Design + review'), ms(10, 'Tool', 'Ship tooling')],
-    durationWeeks: 12, intensity: 'moderate', weeklyHours: 10, cap: 45, applicants: 19,
+    durationWeeks: 12, intensity: 'moderate', weeklyHours: 10, cap: 45, applicants: 11,
     requiredSkills: [rs('Java', 0.4, 80), rs('React', 0.3, 75), rs('REST APIs', 0.3, 75)],
     domainTags: ['Backend', 'Platform'], interestTags: ['APIs', 'Developer Tools'], aspirationTags: ['Platform Engineer', 'Backend Engineer'],
     cultureAnimalAffinity: { beaver: 75, owl: 65, ant: 60 }, factorWeights: FW, slaHours: 72, closesInDays: 8,
@@ -132,109 +137,52 @@ const TRACKS: SeedTrack[] = [
 
 const sk = (name: string, level: number) => ({ name, level })
 
-const CANDIDATES = [
+// Standalone applicants on the Talentbank track — NOT linked to any account, so
+// no registered user ever inherits them. They populate the recruiter's review
+// queue for the demo; the recruiter accepts them to create real enrollments.
+type SeedApplicant = {
+  name: string; headline: string; university: string; program: string
+  skills: { name: string; level: number }[]
+  interests: string[]; aspirations: string[]
+  availabilityHoursPerWeek: number; animalKey: string; reliabilityScore: number
+  matchScore: number; hoursAgo: number
+  note: string; availability: string; hoursPerWeek: number
+}
+
+const APPLICANTS: SeedApplicant[] = [
   {
-    name: 'John Doe', headline: 'Penultimate-year CS student', university: 'Sunway University', program: 'Computer Science',
-    skills: [sk('React', 88), sk('TypeScript', 82), sk('Node.js', 70), sk('Python', 64), sk('Figma', 42)],
-    interests: ['UI Engineering', 'Design Systems', 'Machine Learning'], aspirations: ['Frontend Engineer', 'Product Engineer'],
+    name: 'Nadia Iskandar', headline: 'Final-year CS student, frontend-focused', university: 'Sunway University', program: 'Computer Science',
+    skills: [sk('React', 88), sk('TypeScript', 84), sk('Design Systems', 74), sk('Node.js', 66)],
+    interests: ['UI Engineering', 'Design Systems'], aspirations: ['Frontend Engineer', 'Product Engineer'],
     availabilityHoursPerWeek: 12, animalKey: 'owl', reliabilityScore: 96,
-  },
-  {
-    name: 'Aisha Rahman', headline: 'Aspiring ML engineer', university: 'Universiti Malaya', program: 'Data Science',
-    skills: [sk('Python', 86), sk('TensorFlow', 76), sk('MLOps', 58), sk('SQL', 80)],
-    interests: ['Machine Learning', 'Research'], aspirations: ['ML Engineer', 'Researcher'],
-    availabilityHoursPerWeek: 24, animalKey: 'octopus', reliabilityScore: 92,
-  },
-  {
-    name: 'Marcus Tan', headline: 'Backend systems enthusiast', university: "Taylor's University", program: 'Software Engineering',
-    skills: [sk('Go', 72), sk('PostgreSQL', 76), sk('Node.js', 80), sk('gRPC', 52)],
-    interests: ['Systems', 'Reliability', 'Scalability'], aspirations: ['Backend Engineer', 'Platform Engineer'],
-    availabilityHoursPerWeek: 16, animalKey: 'beaver', reliabilityScore: 90,
+    matchScore: 88, hoursAgo: 30,
+    note: 'I have shipped two production React apps and maintain a small component library. I want to learn how a platform team designs for reuse and release discipline at scale.',
+    availability: 'Within 2 weeks', hoursPerWeek: 12,
   },
   {
     name: 'Priya Nair', headline: 'Design-minded builder', university: 'Monash University Malaysia', program: 'Human-Computer Interaction',
-    skills: [sk('Figma', 82), sk('UX Research', 72), sk('Prototyping', 74), sk('React', 58)],
-    interests: ['Design', 'User Research'], aspirations: ['Product Designer', 'UX Researcher'],
+    skills: [sk('Figma', 82), sk('React', 62), sk('Prototyping', 74), sk('UX Research', 70)],
+    interests: ['Design', 'UI Engineering'], aspirations: ['Product Engineer', 'Product Designer'],
     availabilityHoursPerWeek: 10, animalKey: 'peacock', reliabilityScore: 94,
-  },
-]
-
-// Applications seeded to the recruiter's (Talentbank) track so the review queue
-// is populated. Scores approximate computeMatch; live applies compute the exact fit.
-const APPS = [
-  { name: 'John Doe', matchScore: 90, hoursAgo: 38 },
-  { name: 'Priya Nair', matchScore: 64, hoursAgo: 20 },
-  { name: 'Marcus Tan', matchScore: 52, hoursAgo: 8 },
-  { name: 'Aisha Rahman', matchScore: 47, hoursAgo: 30 },
-]
-
-type SeedTask = {
-  title: string
-  status: 'todo' | 'in-progress' | 'submitted' | 'done' | 'blocked'
-  dueLabel?: string
-  mentorNote?: string
-}
-type SeedEnrollment = {
-  name: string
-  status: 'ahead' | 'on-track' | 'needs-support' | 'at-risk'
-  weekProgress: number
-  totalWeeks: number
-  hoursCommitted: number
-  fit: number
-  feedback: { author: string; role: string; when: string; body: string }[]
-  tasks: SeedTask[]
-}
-
-const wc = (when: string, body: string) => ({ author: 'Wei Chen', role: 'Senior Frontend Engineer', when, body })
-
-const ENROLLMENTS: SeedEnrollment[] = [
-  {
-    name: 'John Doe', status: 'on-track', weekProgress: 8, totalWeeks: 12, hoursCommitted: 78, fit: 88,
-    feedback: [
-      wc('2 days ago', 'PR review turnaround has been excellent — keep flagging blockers early.'),
-      wc('1 week ago', 'Great initiative taking the demo. Next: tighten test coverage on owned modules.'),
-      wc('Week 1', 'Welcome to the squad — start with the nav shell ticket.'),
-    ],
-    tasks: [
-      { title: 'Build the responsive navigation shell', status: 'done', mentorNote: 'Clean component API; great use of the design tokens.' },
-      { title: 'Lead the Week 8 sprint demo', status: 'done', mentorNote: 'Confident walkthrough, handled questions well.' },
-      { title: 'Refactor data-fetching into reusable hooks', status: 'in-progress', dueLabel: 'Due in 3 days' },
-      { title: 'Write tests for the rating module', status: 'todo' },
-      { title: 'Document the onboarding runbook', status: 'blocked', mentorNote: 'Waiting on infra access.' },
-    ],
+    matchScore: 66, hoursAgo: 18,
+    note: 'Coming from a design background, I code my own prototypes in React and want to close the gap toward production-grade frontend engineering.',
+    availability: 'Immediately', hoursPerWeek: 10,
   },
   {
-    name: 'Aisha Rahman', status: 'ahead', weekProgress: 8, totalWeeks: 12, hoursCommitted: 92, fit: 84,
-    feedback: [wc('3 days ago', 'Excellent write-up — circulated to the whole squad as reference.')],
-    tasks: [
-      { title: 'Design the shared state architecture', status: 'done', mentorNote: 'Ahead of schedule and well documented.' },
-      { title: 'Prototype the offline sync layer', status: 'in-progress', dueLabel: 'Due in 6 days' },
-      { title: 'Pair with a teammate on the layout system', status: 'todo' },
-    ],
-  },
-  {
-    name: 'Marcus Tan', status: 'needs-support', weekProgress: 8, totalWeeks: 12, hoursCommitted: 58, fit: 72,
-    feedback: [wc('4 days ago', "Let's sync mid-week — flag layout questions early and we'll unblock together.")],
-    tasks: [
-      { title: 'Build the responsive card grid', status: 'in-progress', dueLabel: 'Due in 2 days', mentorNote: 'Check in mid-week.' },
-      { title: 'Add empty + loading states', status: 'todo' },
-      { title: 'Resolve the flexbox overflow on mobile', status: 'blocked', mentorNote: 'Needs a pairing session.' },
-    ],
-  },
-  {
-    name: 'Priya Nair', status: 'on-track', weekProgress: 8, totalWeeks: 12, hoursCommitted: 70, fit: 81,
-    feedback: [wc('5 days ago', 'Nice attention to focus management on the dropdown.')],
-    tasks: [
-      { title: 'Build the notifications dropdown', status: 'done', mentorNote: 'Nice focus management.' },
-      { title: 'Integrate the search-as-you-type endpoint', status: 'in-progress', dueLabel: 'Due in 5 days' },
-      { title: 'Write component usage docs', status: 'todo' },
-    ],
+    name: 'Marcus Tan', headline: 'Backend systems enthusiast', university: "Taylor's University", program: 'Software Engineering',
+    skills: [sk('Go', 74), sk('PostgreSQL', 76), sk('Node.js', 80), sk('React', 52)],
+    interests: ['Systems', 'Reliability'], aspirations: ['Backend Engineer', 'Platform Engineer'],
+    availabilityHoursPerWeek: 16, animalKey: 'beaver', reliabilityScore: 90,
+    matchScore: 54, hoursAgo: 6,
+    note: 'My strength is backend, but I want to become a well-rounded product engineer. I am ready to put in the reps on the frontend side under strong mentorship.',
+    availability: 'Within a month', hoursPerWeek: 14,
   },
 ]
 
 export const run = internalMutation({
   args: {},
   handler: async (ctx) => {
+    // Full reset — clears any prior demo state, including real accounts' data.
     for (const r of await ctx.db.query('reliabilityEvents').collect()) await ctx.db.delete(r._id)
     for (const s of await ctx.db.query('sponsorships').collect()) await ctx.db.delete(s._id)
     for (const t of await ctx.db.query('tasks').collect()) await ctx.db.delete(t._id)
@@ -242,74 +190,41 @@ export const run = internalMutation({
     for (const a of await ctx.db.query('applications').collect()) await ctx.db.delete(a._id)
     for (const t of await ctx.db.query('tracks').collect()) await ctx.db.delete(t._id)
     for (const o of await ctx.db.query('organizations').collect()) await ctx.db.delete(o._id)
-    for (const c of await ctx.db.query('candidates').collect()) await ctx.db.delete(c._id)
+    // Only remove seeded standalone candidates (no userId); keep real accounts' profiles.
+    for (const c of await ctx.db.query('candidates').collect()) {
+      if (!c.userId) await ctx.db.delete(c._id)
+    }
 
     for (const o of ORGS) await ctx.db.insert('organizations', { ...o, verified: true })
 
     const trackIdBySlug: Record<string, Id<'tracks'>> = {}
     for (const t of TRACKS) trackIdBySlug[t.orgSlug] = await ctx.db.insert('tracks', { ...t, status: 'open' })
 
-    const candIdByName: Record<string, Id<'candidates'>> = {}
-    for (const c of CANDIDATES) candIdByName[c.name] = await ctx.db.insert('candidates', c)
-
     const tbTrack = TRACKS.find((t) => t.orgSlug === 'talentbank')!
     const tbTrackId = trackIdBySlug['talentbank']
     const now = Date.now()
-    for (const ap of APPS) {
-      const appliedAt = now - ap.hoursAgo * 3600 * 1000
+
+    for (const a of APPLICANTS) {
+      const candidateId = await ctx.db.insert('candidates', {
+        name: a.name, headline: a.headline, university: a.university, program: a.program,
+        skills: a.skills, interests: a.interests, aspirations: a.aspirations,
+        availabilityHoursPerWeek: a.availabilityHoursPerWeek, animalKey: a.animalKey,
+        reliabilityScore: a.reliabilityScore, profileComplete: true,
+      })
+      const appliedAt = now - a.hoursAgo * 3600 * 1000
       await ctx.db.insert('applications', {
         trackId: tbTrackId,
-        candidateId: candIdByName[ap.name],
+        candidateId,
         status: 'pending',
-        matchScore: ap.matchScore,
+        matchScore: a.matchScore,
         appliedAt,
         slaDueAt: appliedAt + tbTrack.slaHours * 3600 * 1000,
+        note: a.note,
+        availability: a.availability,
+        hoursPerWeek: a.hoursPerWeek,
       })
     }
 
-    let taskCount = 0
-    const enrollmentIdByName: Record<string, Id<'enrollments'>> = {}
-    for (const e of ENROLLMENTS) {
-      const enrollmentId = await ctx.db.insert('enrollments', {
-        trackId: tbTrackId,
-        candidateId: candIdByName[e.name],
-        mentorName: 'Wei Chen',
-        status: e.status,
-        weekProgress: e.weekProgress,
-        totalWeeks: e.totalWeeks,
-        hoursCommitted: e.hoursCommitted,
-        fit: e.fit,
-        feedback: e.feedback,
-      })
-      enrollmentIdByName[e.name] = enrollmentId
-      let order = 0
-      for (const t of e.tasks) {
-        await ctx.db.insert('tasks', {
-          enrollmentId,
-          title: t.title,
-          status: t.status,
-          dueLabel: t.dueLabel,
-          mentorNote: t.mentorNote,
-          order: order++,
-        })
-        taskCount++
-      }
-    }
-
-    // One standing micro-bond offer to the strongest mentee (John Doe).
-    await ctx.db.insert('sponsorships', {
-      enrollmentId: enrollmentIdByName['John Doe'],
-      candidateId: candIdByName['John Doe'],
-      orgName: 'Talentbank',
-      title: 'Early-Talent Micro-Bond',
-      type: 'milestone',
-      amount: 3000,
-      commitmentKind: 'contract',
-      commitmentMonths: 3,
-      status: 'offered',
-      createdAt: now,
-    })
-
-    return `Seeded ${ORGS.length} orgs, ${TRACKS.length} tracks, ${CANDIDATES.length} candidates, ${APPS.length} applications, ${ENROLLMENTS.length} enrollments, ${taskCount} tasks, 1 sponsorship.`
+    return `Seeded ${ORGS.length} orgs, ${TRACKS.length} tracks, ${APPLICANTS.length} standalone Talentbank applicants. No enrollments/mentorship/sponsorships — those come from real recruiter action.`
   },
 })

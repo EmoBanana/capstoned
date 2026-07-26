@@ -2,10 +2,51 @@ import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 import type { Id } from './_generated/dataModel'
+import type { QueryCtx, MutationCtx } from './_generated/server'
 import { recordEvent } from './reliability'
 
 const TYPE = v.union(v.literal('milestone'), v.literal('period'))
 const COMMITMENT = v.union(v.literal('contract'), v.literal('priority-hiring'))
+
+/** The signed-in user's own candidate profile, or null. No demo fallback. */
+async function myCandidate(ctx: QueryCtx | MutationCtx) {
+  const userId = await getAuthUserId(ctx)
+  if (!userId) return null
+  return await ctx.db
+    .query('candidates')
+    .withIndex('by_user', (q) => q.eq('userId', userId))
+    .first()
+}
+
+type SponsorshipDoc = {
+  _id: Id<'sponsorships'>
+  orgName: string
+  title: string
+  type: 'milestone' | 'period'
+  amount: number
+  commitmentKind: 'contract' | 'priority-hiring'
+  commitmentMonths: number
+  status: string
+  createdAt: number
+  contractNo?: string
+  signedName?: string
+  signedAt?: number
+}
+
+const shape = (s: SponsorshipDoc) => ({
+  id: s._id as string,
+  orgName: s.orgName,
+  title: s.title,
+  type: s.type,
+  amount: s.amount,
+  commitmentKind: s.commitmentKind,
+  commitmentMonths: s.commitmentMonths,
+  status: s.status,
+  createdAt: s.createdAt,
+  contractNo: s.contractNo ?? null,
+  signedName: s.signedName ?? null,
+  signedAt: s.signedAt ?? null,
+})
 
 /** Recruiter offers (or re-offers) a micro-bond to a mentee's enrollment. */
 export const offer = mutation({
@@ -49,14 +90,39 @@ export const offer = mutation({
   },
 })
 
-export const respond = mutation({
-  args: { sponsorshipId: v.id('sponsorships'), status: v.union(v.literal('accepted'), v.literal('declined')) },
-  handler: async (ctx, { sponsorshipId, status }) => {
+/** Student virtually signs the micro-bond contract — the executed record. */
+export const sign = mutation({
+  args: { sponsorshipId: v.id('sponsorships'), signedName: v.string() },
+  handler: async (ctx, { sponsorshipId, signedName }) => {
+    const candidate = await myCandidate(ctx)
     const s = await ctx.db.get(sponsorshipId)
-    await ctx.db.patch(sponsorshipId, { status })
-    if (status === 'accepted' && s) {
-      await recordEvent(ctx, 'candidate', s.candidateId, 2, 'Accepted a sponsorship commitment')
-    }
+    if (!s) throw new Error('Contract not found')
+    if (candidate && s.candidateId !== candidate._id) throw new Error('Not your contract')
+    if (!signedName.trim()) throw new Error('Signature required')
+
+    const now = Date.now()
+    const contractNo =
+      s.contractNo ?? `MB-${new Date(now).getUTCFullYear()}-${(sponsorshipId as string).slice(-6).toUpperCase()}`
+    await ctx.db.patch(sponsorshipId, {
+      status: 'signed',
+      signedName: signedName.trim(),
+      signedAt: now,
+      contractNo,
+    })
+    await recordEvent(ctx, 'candidate', s.candidateId, 2, 'Signed a micro-bond commitment')
+    return contractNo
+  },
+})
+
+/** Student declines the offer. */
+export const decline = mutation({
+  args: { sponsorshipId: v.id('sponsorships') },
+  handler: async (ctx, { sponsorshipId }) => {
+    const candidate = await myCandidate(ctx)
+    const s = await ctx.db.get(sponsorshipId)
+    if (!s) return
+    if (candidate && s.candidateId !== candidate._id) throw new Error('Not your contract')
+    await ctx.db.patch(sponsorshipId, { status: 'declined' })
   },
 })
 
@@ -69,7 +135,7 @@ export const forEnrollment = query({
       .withIndex('by_enrollment', (q) => q.eq('enrollmentId', enrollmentId))
       .collect()
     const s = rows.find((r) => r.status !== 'declined') ?? null
-    return s ? { id: s._id as string, title: s.title, type: s.type, amount: s.amount, commitmentKind: s.commitmentKind, commitmentMonths: s.commitmentMonths, status: s.status } : null
+    return s ? shape(s as SponsorshipDoc) : null
   },
 })
 
@@ -77,15 +143,13 @@ export const forEnrollment = query({
 export const mine = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await getAuthUserId(ctx)
-    const cands = await ctx.db.query('candidates').collect()
-    const candidate = (userId && cands.find((c) => c.userId === userId)) || cands.find((c) => c.name === 'John Doe') || cands[0]
+    const candidate = await myCandidate(ctx)
     if (!candidate) return null
     const rows = await ctx.db
       .query('sponsorships')
       .withIndex('by_candidate', (q) => q.eq('candidateId', candidate._id as Id<'candidates'>))
       .collect()
     const s = rows.find((r) => r.status !== 'declined') ?? null
-    return s ? { id: s._id as string, orgName: s.orgName, title: s.title, type: s.type, amount: s.amount, commitmentKind: s.commitmentKind, commitmentMonths: s.commitmentMonths, status: s.status } : null
+    return s ? shape(s as SponsorshipDoc) : null
   },
 })

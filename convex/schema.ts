@@ -84,6 +84,8 @@ export default defineSchema({
     availabilityHoursPerWeek: v.number(),
     animalKey: v.string(),
     reliabilityScore: v.number(),
+    // False/unset until the student finishes onboarding; gates matching + apply.
+    profileComplete: v.optional(v.boolean()),
   }).index('by_user', ['userId']),
 
   applications: defineTable({
@@ -93,6 +95,10 @@ export default defineSchema({
     matchScore: v.number(),
     appliedAt: v.number(),
     slaDueAt: v.number(),
+    // Captured on the real application form.
+    note: v.optional(v.string()),
+    availability: v.optional(v.string()),
+    hoursPerWeek: v.optional(v.number()),
   })
     .index('by_track', ['trackId'])
     .index('by_candidate', ['candidateId']),
@@ -145,8 +151,17 @@ export default defineSchema({
     amount: v.number(),
     commitmentKind: v.union(v.literal('contract'), v.literal('priority-hiring')),
     commitmentMonths: v.number(),
-    status: v.union(v.literal('offered'), v.literal('accepted'), v.literal('declined')),
+    status: v.union(
+      v.literal('offered'),
+      v.literal('signed'),
+      v.literal('accepted'), // legacy accepted (pre-signature); treated as signed
+      v.literal('declined'),
+    ),
     createdAt: v.number(),
+    // Executed-contract record, set when the student virtually signs.
+    contractNo: v.optional(v.string()),
+    signedName: v.optional(v.string()),
+    signedAt: v.optional(v.number()),
   })
     .index('by_enrollment', ['enrollmentId'])
     .index('by_candidate', ['candidateId']),

@@ -24,6 +24,7 @@ function initialsOf(name: string): string {
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useConvexAuth()
   const me = useQuery(api.users.currentUser, isAuthenticated ? {} : 'skip')
+  const candidate = useQuery(api.candidates.current, isAuthenticated ? {} : 'skip')
   const { signOut } = useAuthActions()
   const router = useRouter()
   const pathname = usePathname()
@@ -34,11 +35,16 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       router.replace('/login')
       return
     }
-    if (me && me.role === 'recruiter') router.replace('/recruiter/dashboard')
-  }, [isLoading, isAuthenticated, me, router])
+    if (me && me.role === 'recruiter') { router.replace('/recruiter/dashboard'); return }
+    // A student without a finished profile can't be matched — send them to onboarding.
+    if (me && me.role !== 'recruiter' && candidate !== undefined && !candidate?.profileComplete) {
+      router.replace('/onboarding')
+    }
+  }, [isLoading, isAuthenticated, me, candidate, router])
 
   if (isLoading || !isAuthenticated || me === undefined || me === null) return null
   if (me.role === 'recruiter') return null
+  if (candidate === undefined || !candidate?.profileComplete) return null
 
   const name = me.name || 'Student'
   const sub = me.email || 'Student'

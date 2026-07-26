@@ -1,7 +1,8 @@
 import { query } from './_generated/server'
 
 /** Open tracks in the full domain.Track shape, enriched with the org's
- *  brand colour + reliability (Session-B lookup by slug). */
+ *  brand colour + reliability, and a LIVE applicant count (seeded baseline +
+ *  real application rows) so applying actually moves the number. */
 export const list = query({
   args: {},
   handler: async (ctx) => {
@@ -12,14 +13,21 @@ export const list = query({
     const orgs = await ctx.db.query('organizations').collect()
     const bySlug = new Map(orgs.map((o) => [o.slug, o]))
 
-    return tracks.map((t) => {
-      const org = bySlug.get(t.orgSlug)
-      return {
-        ...t,
-        id: t._id as string,
-        reliability: org?.reliability ?? 90,
-        brandColor: org?.brandColor ?? '888888',
-      }
-    })
+    return Promise.all(
+      tracks.map(async (t) => {
+        const org = bySlug.get(t.orgSlug)
+        const liveApps = await ctx.db
+          .query('applications')
+          .withIndex('by_track', (q) => q.eq('trackId', t._id))
+          .collect()
+        return {
+          ...t,
+          id: t._id as string,
+          applicants: t.applicants + liveApps.length,
+          reliability: org?.reliability ?? 90,
+          brandColor: org?.brandColor ?? '888888',
+        }
+      }),
+    )
   },
 })

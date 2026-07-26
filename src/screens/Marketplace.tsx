@@ -16,8 +16,12 @@ import {
   ReliabilityScore,
   Input,
   Select,
+  Field,
+  Textarea,
 } from '../components/ui'
 import { CompanyLogo } from '../components/CompanyLogo'
+
+const AVAILABILITY = ['Immediately', 'Within 2 weeks', 'Within a month', 'Flexible']
 
 /* ------------------------------------------------------------------ */
 /*  Student Marketplace — live Convex tracks, real per-candidate fit   */
@@ -205,10 +209,97 @@ function TrackCard({
   )
 }
 
+function ApplyModal({
+  track,
+  fit,
+  submitting,
+  onClose,
+  onSubmit,
+}: {
+  track: TrackRow
+  fit: number | null
+  submitting: boolean
+  onClose: () => void
+  onSubmit: (note: string, availability: string, hours: number) => void
+}) {
+  const [note, setNote] = useState('')
+  const [availability, setAvailability] = useState(AVAILABILITY[0])
+  const [hours, setHours] = useState(track.weeklyHours)
+  const valid = note.trim().length >= 40
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose}>
+      <div
+        className="max-h-[92vh] w-full max-w-lg overflow-y-auto border border-line-strong bg-cream rounded-t-[6px] sm:rounded-[4px]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start gap-3 border-b border-line px-6 py-5">
+          <CompanyLogo slug={track.orgSlug} name={track.org} className="h-11 w-11" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-ink">{track.org}</p>
+            <h3 className="text-base font-bold leading-snug tracking-tight text-ink">{track.title}</h3>
+            <p className="mt-0.5 text-xs text-ink-soft">{commitmentLine(track)}</p>
+          </div>
+          {fit !== null && (
+            <div className="shrink-0 text-right">
+              <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-ink-faint">Your fit</div>
+              <div className="text-lg font-black tabular-nums text-ink">{fit}%</div>
+            </div>
+          )}
+        </div>
+
+        <div className="px-6 py-5">
+          <div className="mb-4 border border-gold/40 bg-gold-soft px-3 py-2 text-xs text-gold-ink rounded-[2px]">
+            Applying here guarantees a real interview within <b>{track.slaHours}h</b>. Your profile and reliability
+            score are shared with {track.org}.
+          </div>
+
+          <Field label="Why you're a strong fit" hint={`${note.trim().length}/40 min`} required>
+            <Textarea
+              rows={5}
+              value={note}
+              onChange={(e) => setNote(e.target.value)}
+              placeholder="What draws you to this track, and what relevant experience or drive would you bring? The mentor reads this."
+            />
+          </Field>
+
+          <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <Field label="Earliest availability">
+              <Select value={availability} onChange={(e) => setAvailability(e.target.value)}>
+                {AVAILABILITY.map((a) => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </Select>
+            </Field>
+            <Field label="Hours / week you'll commit" hint={`track expects ${track.weeklyHours}`}>
+              <Input
+                type="number"
+                min={1}
+                max={60}
+                value={hours}
+                onChange={(e) => setHours(Number(e.target.value))}
+              />
+            </Field>
+          </div>
+        </div>
+
+        <div className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button disabled={!valid || submitting} onClick={() => onSubmit(note.trim(), availability, hours)}>
+            {submitting ? 'Submitting…' : 'Submit application'}
+          </Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Marketplace() {
   const [filter, setFilter] = useState<FilterChip>('All')
   const [query, setQuery] = useState<string>('')
   const [sort, setSort] = useState<SortKey>('fit')
+  const [applyTrack, setApplyTrack] = useState<TrackRow | null>(null)
+  const [submitting, setSubmitting] = useState(false)
 
   const trackData = useQuery(api.tracks.list)
   const candidate = useQuery(api.candidates.current)
@@ -386,15 +477,34 @@ export default function Marketplace() {
               track={track}
               fit={fitById.get(track.id) ?? null}
               applied={appliedSet.has(track.id)}
-              onApply={() =>
-                void apply({
-                  trackId: track.id as Id<'tracks'>,
-                  matchScore: fitById.get(track.id) ?? 0,
-                })
-              }
+              onApply={() => setApplyTrack(track)}
             />
           ))}
         </div>
+      )}
+
+      {applyTrack && (
+        <ApplyModal
+          track={applyTrack}
+          fit={fitById.get(applyTrack.id) ?? null}
+          submitting={submitting}
+          onClose={() => setApplyTrack(null)}
+          onSubmit={async (note, availability, hours) => {
+            setSubmitting(true)
+            try {
+              await apply({
+                trackId: applyTrack.id as Id<'tracks'>,
+                matchScore: fitById.get(applyTrack.id) ?? 0,
+                note,
+                availability,
+                hoursPerWeek: hours,
+              })
+              setApplyTrack(null)
+            } finally {
+              setSubmitting(false)
+            }
+          }}
+        />
       )}
     </Page>
   )

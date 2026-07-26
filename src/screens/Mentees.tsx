@@ -5,6 +5,7 @@ import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import type { Id } from '@/convex/_generated/dataModel'
 import { Page, Card, Badge, Button, ProgressBar, Eyebrow, ReliabilityScore, Field, Input, Select } from '../components/ui'
+import MicroBondContract from '../components/MicroBondContract'
 
 /* ------------------------------------------------------------------ */
 /*  Recruiter · Mentees — live Convex enrollments, master-detail with   */
@@ -56,11 +57,12 @@ function Monogram({ initials, size = 'md' }: { initials: string; size?: 'md' | '
   )
 }
 
-function MenteeDetail({ mentee }: { mentee: MenteeData }) {
+function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: string }) {
   const sponsorship = useQuery(api.sponsorships.forEnrollment, { enrollmentId: mentee.enrollmentId as Id<'enrollments'> })
   const offer = useMutation(api.sponsorships.offer)
   const [action, setAction] = useState<'feedback' | 'message' | null>(null)
   const [modalOpen, setModalOpen] = useState(false)
+  const [showContract, setShowContract] = useState(false)
   const [amount, setAmount] = useState('3000')
   const [type, setType] = useState<'milestone' | 'period'>('milestone')
   const [commitmentKind, setCommitmentKind] = useState<'contract' | 'priority-hiring'>('contract')
@@ -121,14 +123,32 @@ function MenteeDetail({ mentee }: { mentee: MenteeData }) {
         </div>
       )}
 
-      {sponsorship && (
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[2px] border border-gold/40 bg-gold-soft/40 px-4 py-3">
-          <p className="text-sm text-ink">
-            <span className="font-bold">Micro-bond</span> · RM {sponsorship.amount.toLocaleString()} ·{' '}
-            {sponsorship.commitmentMonths}-month {sponsorship.commitmentKind}
-          </p>
-          <Badge tone={sponsorship.status === 'accepted' ? 'success' : 'gold'}>{sponsorship.status}</Badge>
-        </div>
+      {sponsorship && (() => {
+        const executed = sponsorship.status === 'signed' || sponsorship.status === 'accepted'
+        return (
+          <div className={`mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[2px] border px-4 py-3 ${executed ? 'border-success/40 bg-success-soft/40' : 'border-gold/40 bg-gold-soft/40'}`}>
+            <p className="text-sm text-ink">
+              <span className="font-bold">Micro-bond</span> · RM {sponsorship.amount.toLocaleString()} ·{' '}
+              {sponsorship.commitmentMonths}-month {sponsorship.commitmentKind === 'contract' ? 'contract' : 'priority hiring'}
+              {executed && sponsorship.contractNo ? ` · ${sponsorship.contractNo}` : ''}
+            </p>
+            <div className="flex items-center gap-2">
+              <Badge tone={executed ? 'success' : 'gold'}>{executed ? 'Signed' : 'Awaiting signature'}</Badge>
+              {executed && (
+                <Button size="sm" variant="secondary" onClick={() => setShowContract(true)}>View contract</Button>
+              )}
+            </div>
+          </div>
+        )
+      })()}
+
+      {showContract && sponsorship && (
+        <MicroBondContract
+          sponsorship={sponsorship}
+          studentName={mentee.name}
+          trackTitle={trackTitle}
+          onClose={() => setShowContract(false)}
+        />
       )}
 
       <div className="grid grid-cols-1 gap-5 border-b border-line py-6 sm:grid-cols-2">
@@ -260,7 +280,7 @@ export default function Mentees() {
           <Eyebrow>Recruiter · Mentees</Eyebrow>
           <h1 className="mt-2 text-2xl font-black tracking-tight text-ink sm:text-3xl">Enrolled mentees</h1>
           <p className="mt-1 text-sm font-medium text-ink-soft">
-            {data?.trackTitle} · Talentbank · Week 8 of {data?.totalWeeks}
+            {data?.trackTitle} · Talentbank · {data?.totalWeeks}-week track
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3">
@@ -313,7 +333,7 @@ export default function Mentees() {
         </div>
 
         <div>
-          <MenteeDetail mentee={selected} key={selected.enrollmentId} />
+          <MenteeDetail mentee={selected} trackTitle={data?.trackTitle ?? ''} key={selected.enrollmentId} />
         </div>
       </div>
     </Page>

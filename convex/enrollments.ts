@@ -5,14 +5,14 @@ import type { QueryCtx } from './_generated/server'
 import type { Id } from './_generated/dataModel'
 import { clampScore, deltaSum } from './reliability'
 
+/** The signed-in user's own candidate profile, or null. No demo fallback. */
 async function resolveCandidate(ctx: QueryCtx) {
   const userId = await getAuthUserId(ctx)
-  const all = await ctx.db.query('candidates').collect()
-  if (userId) {
-    const linked = all.find((c) => c.userId === userId)
-    if (linked) return linked
-  }
-  return all.find((c) => c.name === 'John Doe') ?? all[0] ?? null
+  if (!userId) return null
+  return await ctx.db
+    .query('candidates')
+    .withIndex('by_user', (q) => q.eq('userId', userId))
+    .first()
 }
 
 async function tasksFor(ctx: QueryCtx, enrollmentId: Id<'enrollments'>) {
