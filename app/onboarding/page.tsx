@@ -16,7 +16,7 @@ export default function OnboardingPage() {
 
   useEffect(() => {
     if (isLoading) return
-    if (!isAuthenticated) { router.replace('/login'); return }
+    if (!isAuthenticated) { router.replace('/welcome'); return }
     if (me && me.role === 'recruiter') { router.replace('/recruiter/dashboard'); return }
     if (candidate && candidate.profileComplete) router.replace('/student/marketplace')
   }, [isLoading, isAuthenticated, me, candidate, router])

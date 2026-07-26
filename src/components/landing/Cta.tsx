@@ -28,7 +28,7 @@ export function Cta({
   variant = 'primary',
   label,
   onClick,
-  href = '/login',
+  href = '/welcome',
   className = '',
   dataAttr,
 }: {

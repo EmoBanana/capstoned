@@ -37,7 +37,7 @@ export function Header({
             </button>
           ) : (
             <Link
-              href="/login"
+              href="/welcome"
               className="hidden px-3 py-2 text-sm font-semibold text-ink-soft transition-colors duration-150 hover:text-ink sm:inline-flex"
             >
               Sign in

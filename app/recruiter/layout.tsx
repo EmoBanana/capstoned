@@ -26,7 +26,7 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
   useEffect(() => {
     if (isLoading) return
     if (!isAuthenticated) {
-      router.replace('/login')
+      router.replace('/welcome')
       return
     }
     if (me && me.role === 'student') router.replace('/student/marketplace')
@@ -74,7 +74,7 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
             <button
               onClick={() => {
                 void signOut()
-                router.push('/login')
+                router.push('/welcome')
               }}
               className="px-1 py-2 text-xs font-semibold text-ink-soft transition-colors hover:text-ink"
             >

@@ -32,7 +32,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   useEffect(() => {
     if (isLoading) return
     if (!isAuthenticated) {
-      router.replace('/login')
+      router.replace('/welcome')
       return
     }
     if (me && me.role === 'recruiter') { router.replace('/recruiter/dashboard'); return }
@@ -91,7 +91,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
             <button
               onClick={() => {
                 void signOut()
-                router.push('/login')
+                router.push('/welcome')
               }}
               className="px-1 py-2 text-xs font-semibold text-ink-soft transition-colors hover:text-ink"
             >
