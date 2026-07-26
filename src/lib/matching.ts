@@ -8,6 +8,7 @@
 /* ------------------------------------------------------------------ */
 
 import { ANIMALS, traitSimilarity } from './animals'
+import { bestMatch, coverage, relatedness } from './concepts'
 import {
   type CandidateProfile,
   type FactorKey,
@@ -79,11 +80,17 @@ function scoreTechnicalSkills(candidate: CandidateProfile, track: Track): Scored
   const missing: string[] = []
 
   for (const req of reqs) {
-    const held = findSkill(candidate.skills, req.name)
     const target = req.targetLevel || 100
-    const coverage = held ? clamp(held.level / target, 0, 1) : 0
-    weightedCoverage += req.weight * coverage
-    if (coverage >= 0.6) matched.push(req.name)
+    // Best coverage across all held skills, weighted by how related each is to
+    // the requirement — an exact skill scores 1, a related one partial credit.
+    let best = 0
+    for (const held of candidate.skills) {
+      const rel = relatedness(req.name, held.name)
+      if (rel === 0) continue
+      best = Math.max(best, rel * clamp(held.level / target, 0, 1))
+    }
+    weightedCoverage += req.weight * best
+    if (best >= 0.6) matched.push(req.name)
     else missing.push(req.name)
   }
 
@@ -110,14 +117,16 @@ function scoreInterests(candidate: CandidateProfile, track: Track): Scored {
     return { score: 70, rationale: 'No interest tags to compare against; treated as neutral.' }
   }
 
-  const matches = overlapCount(candidate.interests, tags)
-  const score = round(clamp((matches / tags.length) * 100))
-  const overlap = tags.filter((t) => candidate.interests.some((i) => tagEq(i, t)))
+  // Compare against interests AND aspirations, using concept relatedness — so a
+  // "Frontend Engineer" aspiration credits a track built around prototyping/UI.
+  const have = [...candidate.interests, ...candidate.aspirations]
+  const score = round(clamp(coverage(tags, have) * 100))
+  const related = tags.filter((t) => bestMatch(t, have).r >= 0.5)
 
   const rationale =
-    matches > 0
-      ? `Shares ${matches} of ${tags.length} track interest area${tags.length === 1 ? '' : 's'}, including ${overlap.slice(0, 3).join(', ')}.`
-      : `None of the candidate's stated interests overlap the track's focus on ${tags.slice(0, 3).join(', ')}.`
+    related.length > 0
+      ? `Aligns with ${related.length} of ${tags.length} track interest area${tags.length === 1 ? '' : 's'} — ${related.slice(0, 3).join(', ')} — counting closely related skills and goals, not just exact tags.`
+      : `The candidate's interests and goals don't map onto the track's focus on ${tags.slice(0, 3).join(', ')}.`
 
   return { score, rationale }
 }
@@ -128,13 +137,15 @@ function scoreAspirations(candidate: CandidateProfile, track: Track): Scored {
     return { score: 70, rationale: 'No aspiration signals on this track; treated as neutral.' }
   }
 
-  const matches = overlapCount(candidate.aspirations, tags)
-  const score = round(clamp((matches / tags.length) * 100))
-  const overlap = tags.filter((t) => candidate.aspirations.some((a) => tagEq(a, t)))
+  // Aspirations weighed against the candidate's goals and interests, so related
+  // roles/skills (e.g. prototyping ↔ Frontend Engineer) count toward the fit.
+  const have = [...candidate.aspirations, ...candidate.interests]
+  const score = round(clamp(coverage(tags, have) * 100))
+  const related = tags.filter((t) => bestMatch(t, have).r >= 0.5)
 
   const rationale =
-    matches > 0
-      ? `The track advances ${matches} of the candidate's stated aspirations, including ${overlap.slice(0, 3).join(', ')}.`
+    related.length > 0
+      ? `The track advances ${related.length} of the candidate's directions — ${related.slice(0, 3).join(', ')} — including closely related roles and skills.`
       : `The track doesn't clearly map to the candidate's stated aspirations. Its focus is ${tags.slice(0, 3).join(', ')}.`
 
   return { score, rationale }
