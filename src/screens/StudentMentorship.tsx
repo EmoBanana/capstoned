@@ -308,14 +308,29 @@ export default function StudentMentorship({ onNavigate }: { onNavigate?: (id: st
                     </Badge>
                   </div>
 
-                  {task.status === 'done' && task.mentorNote && (
-                    <div className="ml-5 mt-3 rounded-[2px] border-l-2 border-success/40 bg-success-soft/40 px-3 py-2">
-                      <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-success-ink">Mentor note · {data.mentorName}</p>
+                  {task.mentorNote && (
+                    <div
+                      className={`ml-5 mt-3 rounded-[2px] border-l-2 px-3 py-2 ${
+                        task.status === 'done'
+                          ? 'border-success/40 bg-success-soft/40'
+                          : task.status === 'blocked'
+                            ? 'border-danger/40 bg-danger-soft/40'
+                            : 'border-gold/40 bg-gold-soft/40'
+                      }`}
+                    >
+                      <p
+                        className={`text-[10px] font-bold uppercase tracking-[0.1em] ${
+                          task.status === 'done'
+                            ? 'text-success-ink'
+                            : task.status === 'blocked'
+                              ? 'text-danger-ink'
+                              : 'text-ink-faint'
+                        }`}
+                      >
+                        Comment · {data.mentorName}
+                      </p>
                       <p className="mt-1 text-xs leading-relaxed text-ink-soft">{task.mentorNote}</p>
                     </div>
-                  )}
-                  {task.status === 'blocked' && task.mentorNote && (
-                    <p className="ml-5 mt-2 text-xs text-danger">{task.mentorNote}</p>
                   )}
                   {task.status === 'submitted' && (
                     <div className="ml-5 mt-3 rounded-[2px] border-l-2 border-slate/40 bg-slate-soft/50 px-3 py-2">
