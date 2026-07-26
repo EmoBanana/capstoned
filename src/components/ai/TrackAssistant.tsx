@@ -215,7 +215,7 @@ function ChatBubble({ role, content }: { role: 'user' | 'assistant'; content: st
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[85%] min-w-0 rounded-[2px] border px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
+        className={`max-w-[85%] min-w-0 rounded-[2px] border px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-justify hyphens-auto ${
           isUser ? 'border-ink bg-ink text-cream' : 'border-line-strong bg-paper text-ink'
         }`}
       >
@@ -248,7 +248,7 @@ function ToolCard({
           </span>
           <Badge tone={isStub ? 'slate' : 'success'}>{isStub ? 'Stub' : 'Live'}</Badge>
         </div>
-        <p className="text-sm leading-relaxed text-ink whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+        <p className="text-sm leading-relaxed text-ink whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-justify hyphens-auto">
           {result.summary}
         </p>
       </div>

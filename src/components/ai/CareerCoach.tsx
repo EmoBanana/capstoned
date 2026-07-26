@@ -32,7 +32,9 @@ CapStoned's whole idea is "experience careers before committing": instead of gue
 
 How you talk:
 - Warm, encouraging, human. Never clinical or corporate.
-- Keep replies SHORT and conversational: 2 to 4 sentences, plain text with no markdown, no headings, and no bullet lists.
+- Keep replies SHORT, conversational, and easy to scan. A simple one-thought reply can stay a sentence or two.
+- When you offer options, directions, or steps, give a one-line intro, then lay them out as short bullets, each line starting with the bullet character "• " followed by a space and one short idea. Separate sections with a blank line.
+- Plain text only: there is no markdown renderer, so never use markdown symbols such as asterisks, hashes, or numbered lists. For a consistent voice, avoid em dashes and parentheses; use commas, colons, or periods instead.
 - End almost every reply with ONE thoughtful follow-up question that helps them discover more about themselves.
 - Reflect back what you heard before nudging forward.
 
@@ -143,7 +145,7 @@ function Bubble({ turn }: { turn: Turn }) {
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[85%] rounded-[2px] border px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+        className={`max-w-[85%] rounded-[2px] border px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap text-justify hyphens-auto ${
           isUser
             ? 'border-ink bg-ink text-cream'
             : 'border-line-strong bg-paper text-ink'

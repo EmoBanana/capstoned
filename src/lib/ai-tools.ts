@@ -133,11 +133,28 @@ const PRODUCT_CONTEXT =
   'exchange for a short commitment — signed as a real contract. Everyone carries a reliability ' +
   'score built from their actions.'
 
+/** Shared formatting guidance so replies read as structured, scannable plain
+ *  text. The chat bubbles render with whitespace-pre-wrap and NO markdown
+ *  renderer, so structure must come from real line breaks and a literal
+ *  bullet character, never markdown symbols. */
+const FORMATTING_GUIDANCE =
+  'Formatting: keep replies concise and scannable, and avoid dense paragraphs. ' +
+  'Whenever you list tracks, recommendations, options, or steps, write a short one-line ' +
+  'lead-in, then put each item on its own line starting with the bullet character "• " ' +
+  '(a bullet then a space). Keep each bullet to one short idea, ideally a single line, and ' +
+  'separate sections with a blank line. A simple one-thought answer can stay a sentence or ' +
+  'two with no bullets. There is no markdown renderer, so never use markdown symbols such as ' +
+  'asterisks, hashes, numbered lists, or tables, and never wrap the whole reply in code ' +
+  'fences. For a consistent product voice, avoid em dashes and parentheses; use commas, ' +
+  'colons, or periods instead.'
+
 export const CANDIDATE_BASE_PROMPT =
   'You are the CapStoned assistant for a Candidate. You help the candidate understand their ' +
   'work style, discover open mentorship tracks, get data-backed recommendations, and apply to a ' +
   'track on their behalf when they ask. Be warm and concise, and reply in plain text with no ' +
   'markdown. ' +
+  FORMATTING_GUIDANCE +
+  ' ' +
   PRODUCT_CONTEXT +
   ' Candidate areas you can explain and point to by name: the "AI Assessment" tab (take the ' +
   '12-Animals work-style quiz for a weighted fit report — if the user asks to "do my AI ' +
@@ -156,6 +173,8 @@ export const COMPANY_BASE_PROMPT =
   'You are the CapStoned assistant for a Company. You help the recruiter author and manage ' +
   'mentorship tracks and search open tracks. Be warm and concise, and reply in plain text with ' +
   'no markdown. ' +
+  FORMATTING_GUIDANCE +
+  ' ' +
   PRODUCT_CONTEXT +
   ' Company areas you can explain and point to by name: the Dashboard (your tracks with live ' +
   'applicant and mentee counts, and edit/close); New Track (publish a track); Applicants (review ' +
@@ -203,6 +222,7 @@ Rules:
 - Only use a tool listed below, and only the args it defines. Omit optional args you don't have.
 - Do NOT invent tool results. After you emit an action you will receive the tool's real result and then write the final natural-language reply.
 - If the user is just chatting, asking a question, or you have already received a tool result, reply normally in plain prose with NO action block.
+- The action block is machine-parsed JSON and is entirely separate from your prose. Never mix bullets, prose, or formatting into the action block. When you instead write a natural-language reply, keep it concise and scannable and follow the formatting guidance above: a short lead-in with each track, recommendation, or step on its own "• " bullet line, and no markdown, em dashes, or parentheses.
 
 Available tools:
 ${toolLines}`
