@@ -58,6 +58,8 @@ type Applicant = {
   interviewProposedBy: Party | null
   interviewStatus: 'proposed' | 'confirmed' | null
   enrolled: boolean
+  enrolledElsewhere: boolean
+  elsewhereLabel: string | null
   name: string
   university: string
   program: string
@@ -158,13 +160,15 @@ function DecisionCard({
         <div className="flex items-start gap-3">
           <Monogram initials={initialsOf(a.name)} />
           <div className="min-w-0">
-            <div className={`text-sm font-bold text-ink ${declined ? 'line-through opacity-60' : ''}`}>{a.name}</div>
+            <div className={`text-sm font-bold text-ink ${declined && !a.enrolledElsewhere ? 'line-through opacity-60' : ''}`}>{a.name}</div>
             <div className="text-xs text-ink-soft">{a.program} · {a.university}</div>
             <div className="mt-1 text-xs text-ink-faint">{a.matchScore}% fit · available {a.availability || '—'}</div>
           </div>
         </div>
         {a.enrolled ? (
           <Badge tone="success"><CheckIcon /> Enrolled</Badge>
+        ) : a.enrolledElsewhere ? (
+          <Badge tone="neutral">In mentorship elsewhere</Badge>
         ) : declined ? (
           <Badge tone="neutral">Declined</Badge>
         ) : confirmed ? (
@@ -174,7 +178,15 @@ function DecisionCard({
         )}
       </div>
 
-      {!declined && (
+      {a.enrolledElsewhere && (
+        <div className="mt-4 border-t border-line pt-4">
+          <p className="text-xs text-ink-soft">
+            Already in an active mentorship{a.elsewhereLabel ? ` · ${a.elsewhereLabel}` : ' elsewhere'}. A candidate can hold only one at a time, so this application is on hold until they finish or leave it.
+          </p>
+        </div>
+      )}
+
+      {!declined && !a.enrolledElsewhere && (
         <div className="mt-4 border-t border-line pt-4">
           {/* Interview state + controls */}
           {a.interviewAt == null ? (
@@ -214,7 +226,7 @@ function DecisionCard({
         </div>
       )}
 
-      {declined && (
+      {declined && !a.enrolledElsewhere && (
         <div className="mt-3">
           <button type="button" onClick={onReopen} className="text-xs font-semibold text-ink-faint transition-colors hover:text-ink">
             Reopen application
@@ -253,7 +265,9 @@ export default function ApplicantReview() {
   const hoursAgo = (appliedAt: number) => Math.max(0, Math.round((now - appliedAt) / 3_600_000))
 
   const pending = useMemo(() => {
-    const copy = applicants.filter((a) => a.status === 'pending')
+    // Candidates already in a mentorship elsewhere can't be enrolled here, so
+    // keep them out of the active queue (they show in the decided tab).
+    const copy = applicants.filter((a) => a.status === 'pending' && !a.enrolledElsewhere)
     copy.sort((a, b) => {
       if (sortKey === 'match-asc') return a.matchScore - b.matchScore
       if (sortKey === 'sla-asc') return a.slaDueAt - b.slaDueAt
@@ -263,7 +277,7 @@ export default function ApplicantReview() {
   }, [applicants, sortKey])
 
   const decided = useMemo(
-    () => applicants.filter((a) => a.status !== 'pending').sort((a, b) => (b.interviewAt ?? 0) - (a.interviewAt ?? 0)),
+    () => applicants.filter((a) => a.status !== 'pending' || a.enrolledElsewhere).sort((a, b) => (b.interviewAt ?? 0) - (a.interviewAt ?? 0)),
     [applicants],
   )
 

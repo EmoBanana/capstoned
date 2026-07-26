@@ -197,15 +197,16 @@ export const forOrg = query({
       .withIndex('by_track', (q) => q.eq('trackId', track._id))
       .collect()
 
-    const enrollments = await ctx.db
-      .query('enrollments')
-      .withIndex('by_track', (q) => q.eq('trackId', track._id))
-      .collect()
-    const enrolledCandidateIds = new Set(enrollments.map((e) => e.candidateId as string))
-
     const applicants = await Promise.all(
       apps.map(async (a) => {
         const c = await ctx.db.get(a.candidateId)
+        // A candidate holds one active mentorship at a time. Distinguish
+        // enrolled-in-THIS-track from enrolled-in-another — the latter closes
+        // their application here rather than making them our mentee.
+        const active = await activeEnrollmentFor(ctx, a.candidateId)
+        const enrolled = active !== null && (active.trackId as string) === (track._id as string)
+        const elsewhere = active !== null && !enrolled
+        const elsewhereTrack = elsewhere ? await ctx.db.get(active.trackId) : null
         return {
           id: a._id as string,
           status: a.status,
@@ -218,7 +219,9 @@ export const forOrg = query({
           interviewAt: a.interviewAt ?? null,
           interviewProposedBy: a.interviewProposedBy ?? null,
           interviewStatus: a.interviewStatus ?? null,
-          enrolled: enrolledCandidateIds.has(a.candidateId as string),
+          enrolled,
+          enrolledElsewhere: elsewhere,
+          elsewhereLabel: elsewhereTrack ? `${elsewhereTrack.title} · ${elsewhereTrack.org}` : null,
           name: c?.name ?? '—',
           university: c?.university ?? '',
           program: c?.program ?? '',
