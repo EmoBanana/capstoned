@@ -625,11 +625,10 @@ export default function TrackBuilder({ editId = null }: { editId?: string | null
             <Button
               variant="ghost"
               size="md"
-              onClick={goBack}
-              disabled={step === 1}
+              onClick={step === 1 ? () => router.push('/recruiter/dashboard') : goBack}
             >
               <IconArrow dir="left" />
-              Back
+              {step === 1 ? 'Cancel' : 'Back'}
             </Button>
 
             <div className="flex items-center gap-3">
