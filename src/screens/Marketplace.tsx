@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react'
 import { useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
+import { computeMatch } from '@/src/lib/matching'
+import type { CandidateProfile, Track as DomainTrack } from '@/src/lib/domain'
 import {
   Page,
   Eyebrow,
@@ -17,65 +19,65 @@ import {
 import { CompanyLogo } from '../components/CompanyLogo'
 
 /* ------------------------------------------------------------------ */
-/*  Screen 2 — The Student Marketplace                                 */
-/*  Live, data-dense grid of open mentorship tracks from Convex.       */
+/*  Student Marketplace — live Convex tracks, real per-candidate fit   */
+/*  computed with Session A's weighted decision matrix (matching.ts).  */
 /* ------------------------------------------------------------------ */
 
-type Intensity = 'Part-time' | 'Full-time'
+type Intensity = 'light' | 'moderate' | 'intense'
 
-type Track = {
+type TrackRow = {
   id: string
-  company: string
-  slug: string
-  reliability: number
   title: string
+  org: string
+  orgSlug: string
+  department: string
+  summary: string
+  durationWeeks: number
   intensity: Intensity
-  commitmentLine: string
-  skills: string[]
-  applicants: number
+  weeklyHours: number
   cap: number
+  applicants: number
+  requiredSkills: { name: string; weight: number; targetLevel: number }[]
   slaHours: number
   closesInDays: number
-  fitScore: number
+  reliability: number
+  // (plus domain fields used only by computeMatch — passed through)
+  [key: string]: unknown
+}
+
+const INTENSITY_LABEL: Record<Intensity, string> = {
+  light: 'Light',
+  moderate: 'Moderate',
+  intense: 'Intense',
 }
 
 type FilterChip = 'All' | Intensity
-const FILTERS: FilterChip[] = ['All', 'Part-time', 'Full-time']
+const FILTERS: FilterChip[] = ['All', 'light', 'moderate', 'intense']
 
-type SortKey = 'closing' | 'applicants' | 'fit'
+type SortKey = 'fit' | 'closing' | 'applicants'
 const SORTS: { key: SortKey; label: string }[] = [
+  { key: 'fit', label: 'Best fit for you' },
   { key: 'closing', label: 'Closing soonest' },
   { key: 'applicants', label: 'Fewest applicants' },
-  { key: 'fit', label: 'Best fit' },
 ]
 
-/* small inline icons (sharp, currentColor) */
+function commitmentLine(t: TrackRow): string {
+  return t.intensity === 'intense'
+    ? `Full-time · ${t.durationWeeks} weeks`
+    : `${t.weeklyHours} hrs/week · ${t.durationWeeks} weeks`
+}
+
 function ClockIcon() {
   return (
-    <svg
-      className="h-3.5 w-3.5"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      aria-hidden="true"
-    >
+    <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
       <circle cx="12" cy="12" r="9" />
       <path d="M12 7v5l3 2" strokeLinecap="square" />
     </svg>
   )
 }
-
 function SearchIcon() {
   return (
-    <svg
-      className="h-4 w-4"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={1.5}
-      aria-hidden="true"
-    >
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden="true">
       <circle cx="11" cy="11" r="7" />
       <path d="M20 20l-3.5-3.5" strokeLinecap="square" />
     </svg>
@@ -87,45 +89,54 @@ function barTone(pct: number): 'success' | 'gold' | 'danger' {
   if (pct >= 70) return 'gold'
   return 'success'
 }
+function fitTone(pct: number): 'success' | 'gold' | 'danger' {
+  return pct >= 75 ? 'success' : pct >= 55 ? 'gold' : 'danger'
+}
 
-function TrackCard({ track }: { track: Track }) {
+function TrackCard({ track, fit }: { track: TrackRow; fit: number | null }) {
   const pct = Math.round((track.applicants / track.cap) * 100)
   const full = track.applicants >= track.cap
-  const tone = barTone(pct)
   const closingSoon = track.closesInDays <= 2
 
   return (
     <Card className="flex flex-col p-5">
-      {/* Header: brand logo + company + reliability */}
       <div className="flex items-start justify-between gap-3">
         <div className="flex items-center gap-3 min-w-0">
-          <CompanyLogo slug={track.slug} name={track.company} className="h-11 w-11" />
+          <CompanyLogo slug={track.orgSlug} name={track.org} className="h-11 w-11" />
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-ink">{track.company}</p>
+            <p className="truncate text-sm font-semibold text-ink">{track.org}</p>
             <p className="text-[11px] uppercase tracking-[0.08em] text-ink-faint">
-              {track.intensity}
+              {INTENSITY_LABEL[track.intensity]}
             </p>
           </div>
         </div>
         <ReliabilityScore value={track.reliability} label="Rel" className="shrink-0" />
       </div>
 
-      {/* Title */}
       <h3 className="mt-4 text-lg font-bold leading-snug tracking-tight text-ink">{track.title}</h3>
+      <p className="mt-1.5 text-sm text-ink-soft">{commitmentLine(track)}</p>
 
-      {/* Commitment line */}
-      <p className="mt-1.5 text-sm text-ink-soft">{track.commitmentLine}</p>
+      {/* Your fit — real weighted-matrix result */}
+      {fit !== null && (
+        <div className="mt-3 border border-line bg-paper px-3 py-2 rounded-[2px]">
+          <div className="mb-1 flex items-baseline justify-between">
+            <span className="text-[10px] font-bold uppercase tracking-[0.12em] text-ink-faint">
+              Your fit
+            </span>
+            <span className="text-sm font-bold tabular-nums text-ink">{fit}%</span>
+          </div>
+          <ProgressBar value={fit} tone={fitTone(fit)} />
+        </div>
+      )}
 
-      {/* Skill tags */}
       <div className="mt-3 flex flex-wrap gap-1.5">
-        {track.skills.map((s) => (
-          <Badge key={s} tone="slate">
-            {s}
+        {track.requiredSkills.slice(0, 3).map((s) => (
+          <Badge key={s.name} tone="slate">
+            {s.name}
           </Badge>
         ))}
       </div>
 
-      {/* SLA badge — highly visible */}
       <div className="mt-4">
         <span className="inline-flex items-center gap-1.5 border border-gold/40 bg-gold-soft px-2.5 py-1.5 text-[11px] font-bold uppercase tracking-[0.06em] text-gold-ink rounded-[2px]">
           <ClockIcon />
@@ -133,17 +144,14 @@ function TrackCard({ track }: { track: Track }) {
         </span>
       </div>
 
-      {/* Applicants progress */}
       <div className="mt-4">
         <div className="mb-1.5 flex items-baseline justify-between">
-          <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-soft">
-            Applicants
-          </span>
+          <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-soft">Applicants</span>
           <span className="text-xs font-bold tabular-nums text-ink">
             {track.applicants}/{track.cap} <span className="text-ink-faint">(Cap)</span>
           </span>
         </div>
-        <ProgressBar value={track.applicants} max={track.cap} tone={tone} />
+        <ProgressBar value={track.applicants} max={track.cap} tone={barTone(pct)} />
         {full ? (
           <p className="mt-1.5 text-[11px] font-semibold uppercase tracking-[0.06em] text-danger">
             Cap reached · waitlist only
@@ -159,7 +167,6 @@ function TrackCard({ track }: { track: Track }) {
         )}
       </div>
 
-      {/* Footer: countdown + apply / waitlist */}
       <div className="mt-auto flex items-center justify-between gap-3 border-t border-line pt-4">
         <span
           className={`inline-flex items-center gap-1.5 text-xs font-semibold ${
@@ -186,85 +193,90 @@ function TrackCard({ track }: { track: Track }) {
 export default function Marketplace() {
   const [filter, setFilter] = useState<FilterChip>('All')
   const [query, setQuery] = useState<string>('')
-  const [sort, setSort] = useState<SortKey>('closing')
+  const [sort, setSort] = useState<SortKey>('fit')
 
-  const data = useQuery(api.tracks.list)
-  const loading = data === undefined
-  const tracks = useMemo<Track[]>(() => (data ?? []) as Track[], [data])
+  const trackData = useQuery(api.tracks.list)
+  const candidate = useQuery(api.candidates.current)
+  const loading = trackData === undefined || candidate === undefined
 
-  const visible = useMemo<Track[]>(() => {
+  const tracks = useMemo<TrackRow[]>(() => (trackData ?? []) as TrackRow[], [trackData])
+
+  // Real weighted-matrix fit per track, keyed by id.
+  const fitById = useMemo<Map<string, number>>(() => {
+    const m = new Map<string, number>()
+    if (!candidate) return m
+    for (const t of tracks) {
+      m.set(t.id, computeMatch(candidate as unknown as CandidateProfile, t as unknown as DomainTrack).overall)
+    }
+    return m
+  }, [tracks, candidate])
+
+  const visible = useMemo<TrackRow[]>(() => {
     const q = query.trim().toLowerCase()
     const filtered = tracks.filter((t) => {
       const matchesFilter = filter === 'All' || t.intensity === filter
       const matchesQuery =
         q === '' ||
         t.title.toLowerCase().includes(q) ||
-        t.company.toLowerCase().includes(q) ||
-        t.skills.some((s) => s.toLowerCase().includes(q))
+        t.org.toLowerCase().includes(q) ||
+        t.requiredSkills.some((s) => s.name.toLowerCase().includes(q))
       return matchesFilter && matchesQuery
     })
-
     const sorted = [...filtered]
     sorted.sort((a, b) => {
       switch (sort) {
+        case 'fit':
+          return (fitById.get(b.id) ?? 0) - (fitById.get(a.id) ?? 0)
         case 'closing':
           return a.closesInDays - b.closesInDays
         case 'applicants':
           return a.applicants - b.applicants
-        case 'fit':
-          return b.fitScore - a.fitScore
         default:
           return 0
       }
     })
     return sorted
-  }, [tracks, filter, query, sort])
+  }, [tracks, filter, query, sort, fitById])
 
   const openTracks = tracks.filter((t) => t.applicants < t.cap).length
   const avgSla = tracks.length
-    ? Math.round(tracks.reduce((sum, t) => sum + t.slaHours, 0) / tracks.length)
+    ? Math.round(tracks.reduce((s, t) => s + t.slaHours, 0) / tracks.length)
     : 0
-  const totalSeats = tracks.reduce((sum, t) => sum + Math.max(0, t.cap - t.applicants), 0)
+  const totalSeats = tracks.reduce((s, t) => s + Math.max(0, t.cap - t.applicants), 0)
 
   return (
     <Page>
-      {/* Header */}
       <header className="mb-8">
         <Eyebrow>Student · Marketplace</Eyebrow>
         <h1 className="mt-3 max-w-3xl text-3xl font-black leading-tight tracking-tight text-ink sm:text-4xl">
           Tracks open now
         </h1>
         <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft sm:text-base">
-          Apply based on your availability. Every track shows live seats and a guaranteed interview
-          window, so you always know where you stand.
+          Ranked by your real fit — a weighted match across your skills, interests, aspirations, and
+          work style. Every track shows live seats and a guaranteed interview window.
         </p>
       </header>
 
-      {/* Stats strip */}
       <div className="mb-8 grid grid-cols-1 divide-y divide-line border border-line bg-white rounded-[2px] sm:grid-cols-3 sm:divide-x sm:divide-y-0">
         <div className="px-5 py-4">
           <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-ink-faint">Open tracks</p>
           <p className="mt-1 text-2xl font-black tabular-nums text-ink">{openTracks}</p>
         </div>
         <div className="px-5 py-4">
-          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-ink-faint">
-            Avg interview SLA
-          </p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-ink-faint">Avg interview SLA</p>
           <p className="mt-1 text-2xl font-black tabular-nums text-ink">{avgSla} hrs</p>
         </div>
         <div className="px-5 py-4">
-          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-ink-faint">
-            Seats available
-          </p>
+          <p className="text-[11px] font-bold uppercase tracking-[0.1em] text-ink-faint">Seats available</p>
           <p className="mt-1 text-2xl font-black tabular-nums text-ink">{totalSeats}</p>
         </div>
       </div>
 
-      {/* Filter / search / sort bar */}
       <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex flex-wrap gap-2">
           {FILTERS.map((f) => {
             const active = filter === f
+            const label = f === 'All' ? 'All' : INTENSITY_LABEL[f]
             return (
               <button
                 key={f}
@@ -277,7 +289,7 @@ export default function Marketplace() {
                     : 'border-line-strong bg-white text-ink-soft hover:border-ink hover:text-ink'
                 }`}
               >
-                {f}
+                {label}
               </button>
             )
           })}
@@ -300,7 +312,7 @@ export default function Marketplace() {
           <Select
             value={sort}
             onChange={(e) => setSort(e.target.value as SortKey)}
-            className="sm:w-48"
+            className="sm:w-52"
             aria-label="Sort tracks"
           >
             {SORTS.map((s) => (
@@ -312,14 +324,13 @@ export default function Marketplace() {
         </div>
       </div>
 
-      {/* Result count */}
       <p className="mb-4 text-xs font-semibold uppercase tracking-[0.08em] text-ink-faint">
         {loading ? (
           'Loading tracks…'
         ) : (
           <>
             Showing {visible.length} {visible.length === 1 ? 'track' : 'tracks'}
-            {filter !== 'All' && <span className="text-ink-soft"> · {filter}</span>}
+            {filter !== 'All' && <span className="text-ink-soft"> · {INTENSITY_LABEL[filter]}</span>}
             {query.trim() !== '' && (
               <span className="text-ink-soft"> · matching “{query.trim()}”</span>
             )}
@@ -327,7 +338,6 @@ export default function Marketplace() {
         )}
       </p>
 
-      {/* Grid */}
       {loading ? (
         <Card className="px-6 py-16 text-center">
           <p className="text-sm font-semibold text-ink-soft">Loading open tracks…</p>
@@ -335,9 +345,7 @@ export default function Marketplace() {
       ) : visible.length === 0 ? (
         <Card className="px-6 py-16 text-center">
           <p className="text-sm font-semibold text-ink">No tracks match your filters.</p>
-          <p className="mt-1.5 text-sm text-ink-soft">
-            Try clearing the search or switching the format filter.
-          </p>
+          <p className="mt-1.5 text-sm text-ink-soft">Try clearing the search or switching intensity.</p>
           <div className="mt-5">
             <Button
               variant="secondary"
@@ -345,7 +353,7 @@ export default function Marketplace() {
               onClick={() => {
                 setFilter('All')
                 setQuery('')
-                setSort('closing')
+                setSort('fit')
               }}
             >
               Reset filters
@@ -355,7 +363,7 @@ export default function Marketplace() {
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {visible.map((track) => (
-            <TrackCard key={track.id} track={track} />
+            <TrackCard key={track.id} track={track} fit={fitById.get(track.id) ?? null} />
           ))}
         </div>
       )}

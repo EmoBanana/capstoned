@@ -1,78 +1,176 @@
 import { internalMutation } from './_generated/server'
 
-type Intensity = 'Part-time' | 'Full-time'
+/* Session B owns this data (Session A's mock-data.ts is gone). Shapes mirror
+   src/lib/domain.ts so src/lib/matching.ts computeMatch() runs against it. */
 
-const ORGS: {
-  name: string
-  slug: string
-  brandColor: string
-  reliability: number
-}[] = [
-  { name: 'Talentbank', slug: 'talentbank', brandColor: 'D81439', reliability: 98 },
-  { name: 'Grab', slug: 'grab', brandColor: '00B14F', reliability: 97 },
-  { name: 'Shopee', slug: 'shopee', brandColor: 'EE4D2D', reliability: 95 },
-  { name: 'Google', slug: 'google', brandColor: '4285F4', reliability: 99 },
-  { name: 'Intel', slug: 'intel', brandColor: '0071C5', reliability: 98 },
-  { name: 'Stripe', slug: 'stripe', brandColor: '635BFF', reliability: 98 },
-  { name: 'Atlassian', slug: 'atlassian', brandColor: '0052CC', reliability: 96 },
-  { name: 'NVIDIA', slug: 'nvidia', brandColor: '76B900', reliability: 99 },
-  { name: 'Airbnb', slug: 'airbnb', brandColor: 'FF5A5F', reliability: 96 },
-  { name: 'Spotify', slug: 'spotify', brandColor: '1ED760', reliability: 97 },
-]
-
-const TRACKS: {
-  org: string
-  title: string
-  intensity: Intensity
-  durationWeeks: number
-  weeklyHours: number
-  skills: string[]
-  applicants: number
-  cap: number
-  slaHours: number
-  closesInDays: number
-  fitScore: number
-}[] = [
-  { org: 'talentbank', title: 'Frontend Architecture Mentorship', intensity: 'Part-time', durationWeeks: 12, weeklyHours: 10, skills: ['React', 'TypeScript', 'Design Systems'], applicants: 50, cap: 50, slaHours: 48, closesInDays: 3, fitScore: 91 },
-  { org: 'grab', title: 'Mobility Frontend Mentorship', intensity: 'Part-time', durationWeeks: 12, weeklyHours: 10, skills: ['React', 'TypeScript', 'Maps SDK'], applicants: 47, cap: 50, slaHours: 48, closesInDays: 4, fitScore: 89 },
-  { org: 'shopee', title: 'Backend & Payments Track', intensity: 'Full-time', durationWeeks: 6, weeklyHours: 40, skills: ['Go', 'PostgreSQL', 'gRPC'], applicants: 38, cap: 45, slaHours: 48, closesInDays: 5, fitScore: 84 },
-  { org: 'google', title: 'Applied Machine Learning Sprint', intensity: 'Full-time', durationWeeks: 4, weeklyHours: 40, skills: ['Python', 'TensorFlow', 'MLOps'], applicants: 44, cap: 48, slaHours: 24, closesInDays: 4, fitScore: 86 },
-  { org: 'intel', title: 'Embedded Systems Mentorship', intensity: 'Part-time', durationWeeks: 10, weeklyHours: 8, skills: ['C++', 'RTOS', 'Firmware'], applicants: 30, cap: 40, slaHours: 72, closesInDays: 6, fitScore: 80 },
-  { org: 'stripe', title: 'Payments Reliability Track', intensity: 'Part-time', durationWeeks: 12, weeklyHours: 8, skills: ['TypeScript', 'Node.js', 'Distributed Systems'], applicants: 33, cap: 40, slaHours: 24, closesInDays: 6, fitScore: 88 },
-  { org: 'atlassian', title: 'Developer Platform Mentorship', intensity: 'Part-time', durationWeeks: 12, weeklyHours: 10, skills: ['Java', 'React', 'REST APIs'], applicants: 19, cap: 45, slaHours: 72, closesInDays: 8, fitScore: 74 },
-  { org: 'nvidia', title: 'GPU Computing & AI Sprint', intensity: 'Full-time', durationWeeks: 6, weeklyHours: 40, skills: ['CUDA', 'PyTorch', 'C++'], applicants: 41, cap: 48, slaHours: 48, closesInDays: 4, fitScore: 86 },
-  { org: 'airbnb', title: 'Product Design Foundations', intensity: 'Part-time', durationWeeks: 10, weeklyHours: 8, skills: ['Figma', 'UX Research', 'Prototyping'], applicants: 22, cap: 30, slaHours: 72, closesInDays: 9, fitScore: 78 },
-  { org: 'spotify', title: 'Growth Data Science Track', intensity: 'Part-time', durationWeeks: 10, weeklyHours: 6, skills: ['SQL', 'Experimentation', 'Python'], applicants: 28, cap: 30, slaHours: 24, closesInDays: 2, fitScore: 88 },
-]
-
-function commitmentLine(intensity: Intensity, weeklyHours: number, durationWeeks: number): string {
-  return intensity === 'Full-time'
-    ? `Full-time · ${durationWeeks} weeks`
-    : `${weeklyHours} hrs/week · ${durationWeeks} weeks`
+const FW = {
+  technicalSkills: 0.3,
+  interests: 0.2,
+  aspirations: 0.15,
+  workingStyle: 0.25,
+  commitment: 0.1,
 }
 
-/** Idempotent-ish reseed: clears orgs + tracks, then inserts the demo data. */
+const ORGS = [
+  { name: 'Talentbank', slug: 'talentbank', brandColor: 'D81439', reliability: 98 },
+  { name: 'Grab', slug: 'grab', brandColor: '00B14F', reliability: 97 },
+  { name: 'Google', slug: 'google', brandColor: '4285F4', reliability: 99 },
+  { name: 'Stripe', slug: 'stripe', brandColor: '635BFF', reliability: 98 },
+  { name: 'Shopee', slug: 'shopee', brandColor: 'EE4D2D', reliability: 95 },
+  { name: 'NVIDIA', slug: 'nvidia', brandColor: '76B900', reliability: 99 },
+  { name: 'Airbnb', slug: 'airbnb', brandColor: 'FF5A5F', reliability: 96 },
+  { name: 'Atlassian', slug: 'atlassian', brandColor: '0052CC', reliability: 96 },
+]
+
+const rs = (name: string, weight: number, targetLevel: number) => ({ name, weight, targetLevel })
+const ms = (week: number, title: string, detail: string) => ({ id: `m${week}`, week, title, detail })
+
+type SeedTrack = {
+  title: string; org: string; orgSlug: string; department: string; summary: string
+  objectives: string[]; deliverables: string[]
+  milestones: { id: string; week: number; title: string; detail: string }[]
+  durationWeeks: number; intensity: 'light' | 'moderate' | 'intense'; weeklyHours: number
+  cap: number; applicants: number
+  requiredSkills: { name: string; weight: number; targetLevel: number }[]
+  domainTags: string[]; interestTags: string[]; aspirationTags: string[]
+  cultureAnimalAffinity: Record<string, number>
+  factorWeights: { technicalSkills: number; interests: number; aspirations: number; workingStyle: number; commitment: number }
+  slaHours: number; closesInDays: number
+}
+
+const TRACKS: SeedTrack[] = [
+  {
+    title: 'Frontend Architecture Mentorship', org: 'Talentbank', orgSlug: 'talentbank', department: 'Engineering · Web Platform',
+    summary: 'Build production UI alongside platform engineers — components, testing, and release workflows.',
+    objectives: ['Ship a reusable component to the design system', 'Own a feature end-to-end'],
+    deliverables: ['A merged design-system component', 'A shipped, tested feature'],
+    milestones: [ms(2, 'First reviewed PR', 'Merge a small component'), ms(8, 'Feature demo', 'Present an owned feature')],
+    durationWeeks: 12, intensity: 'moderate', weeklyHours: 10, cap: 50, applicants: 50,
+    requiredSkills: [rs('React', 0.5, 85), rs('TypeScript', 0.3, 80), rs('Design Systems', 0.2, 75)],
+    domainTags: ['Frontend', 'Web'], interestTags: ['UI Engineering', 'Design Systems'], aspirationTags: ['Frontend Engineer', 'Product Engineer'],
+    cultureAnimalAffinity: { owl: 80, beaver: 70, peacock: 60 }, factorWeights: FW, slaHours: 48, closesInDays: 3,
+  },
+  {
+    title: 'Mobility Frontend Mentorship', org: 'Grab', orgSlug: 'grab', department: 'Engineering · Consumer',
+    summary: 'Work on consumer-scale mobility surfaces with our frontend guild.',
+    objectives: ['Improve a high-traffic screen', 'Add maps interactions'],
+    deliverables: ['A shipped screen improvement', 'A maps feature prototype'],
+    milestones: [ms(3, 'Onboarding PR', 'Land a first change'), ms(9, 'Maps feature', 'Ship a maps interaction')],
+    durationWeeks: 12, intensity: 'moderate', weeklyHours: 10, cap: 50, applicants: 47,
+    requiredSkills: [rs('React', 0.5, 85), rs('TypeScript', 0.3, 80), rs('Maps SDK', 0.2, 70)],
+    domainTags: ['Frontend', 'Mobility'], interestTags: ['UI Engineering', 'Maps'], aspirationTags: ['Frontend Engineer', 'Mobile Engineer'],
+    cultureAnimalAffinity: { owl: 70, fox: 65, dolphin: 60 }, factorWeights: FW, slaHours: 48, closesInDays: 4,
+  },
+  {
+    title: 'Applied Machine Learning Sprint', org: 'Google', orgSlug: 'google', department: 'Research · AI',
+    summary: 'An intensive sprint training and shipping an applied ML model.',
+    objectives: ['Train a baseline model', 'Deploy an inference endpoint'],
+    deliverables: ['A trained model', 'A deployed endpoint'],
+    milestones: [ms(1, 'Baseline', 'Reproduce a baseline'), ms(3, 'Deploy', 'Ship inference')],
+    durationWeeks: 4, intensity: 'intense', weeklyHours: 40, cap: 48, applicants: 44,
+    requiredSkills: [rs('Python', 0.4, 85), rs('TensorFlow', 0.35, 80), rs('MLOps', 0.25, 70)],
+    domainTags: ['AI', 'ML'], interestTags: ['Machine Learning', 'Research'], aspirationTags: ['ML Engineer', 'Researcher'],
+    cultureAnimalAffinity: { owl: 85, octopus: 70, eagle: 60 }, factorWeights: FW, slaHours: 24, closesInDays: 4,
+  },
+  {
+    title: 'Payments Reliability Track', org: 'Stripe', orgSlug: 'stripe', department: 'Engineering · Infrastructure',
+    summary: 'Harden payment systems for reliability and correctness.',
+    objectives: ['Add observability to a service', 'Fix a reliability gap'],
+    deliverables: ['Dashboards for a service', 'A reliability fix in production'],
+    milestones: [ms(2, 'Instrument', 'Add metrics'), ms(10, 'Harden', 'Close a reliability gap')],
+    durationWeeks: 12, intensity: 'moderate', weeklyHours: 8, cap: 40, applicants: 33,
+    requiredSkills: [rs('TypeScript', 0.4, 85), rs('Node.js', 0.35, 80), rs('Distributed Systems', 0.25, 75)],
+    domainTags: ['Backend', 'Payments'], interestTags: ['Systems', 'Reliability'], aspirationTags: ['Backend Engineer', 'Platform Engineer'],
+    cultureAnimalAffinity: { beaver: 80, ant: 70, tortoise: 65 }, factorWeights: FW, slaHours: 24, closesInDays: 6,
+  },
+  {
+    title: 'Backend & Payments Track', org: 'Shopee', orgSlug: 'shopee', department: 'Engineering · Commerce',
+    summary: 'Build scalable commerce backends handling real transaction volume.',
+    objectives: ['Design a service API', 'Optimize a hot path'],
+    deliverables: ['A service API', 'A measured performance win'],
+    milestones: [ms(1, 'API design', 'Draft the API'), ms(5, 'Optimize', 'Ship a perf win')],
+    durationWeeks: 6, intensity: 'intense', weeklyHours: 40, cap: 45, applicants: 38,
+    requiredSkills: [rs('Go', 0.4, 80), rs('PostgreSQL', 0.3, 80), rs('gRPC', 0.3, 70)],
+    domainTags: ['Backend', 'Commerce'], interestTags: ['Systems', 'Scalability'], aspirationTags: ['Backend Engineer', 'SRE'],
+    cultureAnimalAffinity: { ant: 80, beaver: 70, wolf: 60 }, factorWeights: FW, slaHours: 48, closesInDays: 5,
+  },
+  {
+    title: 'GPU Computing & AI Sprint', org: 'NVIDIA', orgSlug: 'nvidia', department: 'Research · Accelerated Computing',
+    summary: 'Accelerate ML workloads on GPUs and profile performance.',
+    objectives: ['Port a kernel to CUDA', 'Profile and speed up training'],
+    deliverables: ['A CUDA kernel', 'A profiling report + speedup'],
+    milestones: [ms(2, 'Kernel', 'Port to CUDA'), ms(5, 'Speedup', 'Measured improvement')],
+    durationWeeks: 6, intensity: 'intense', weeklyHours: 40, cap: 48, applicants: 41,
+    requiredSkills: [rs('CUDA', 0.4, 80), rs('PyTorch', 0.35, 80), rs('C++', 0.25, 75)],
+    domainTags: ['AI', 'HPC'], interestTags: ['Machine Learning', 'Performance'], aspirationTags: ['ML Engineer', 'Systems Engineer'],
+    cultureAnimalAffinity: { owl: 80, octopus: 75, eagle: 65 }, factorWeights: FW, slaHours: 48, closesInDays: 4,
+  },
+  {
+    title: 'Product Design Foundations', org: 'Airbnb', orgSlug: 'airbnb', department: 'Design · Product',
+    summary: 'Learn product design fundamentals through real user research and prototyping.',
+    objectives: ['Run a research study', 'Prototype a flow'],
+    deliverables: ['A research summary', 'A clickable prototype'],
+    milestones: [ms(2, 'Research', 'Interview users'), ms(8, 'Prototype', 'Ship a prototype')],
+    durationWeeks: 10, intensity: 'light', weeklyHours: 8, cap: 30, applicants: 22,
+    requiredSkills: [rs('Figma', 0.4, 75), rs('UX Research', 0.35, 70), rs('Prototyping', 0.25, 70)],
+    domainTags: ['Design', 'Product'], interestTags: ['Design', 'User Research'], aspirationTags: ['Product Designer', 'UX Researcher'],
+    cultureAnimalAffinity: { peacock: 85, dolphin: 70, fox: 60 }, factorWeights: FW, slaHours: 72, closesInDays: 9,
+  },
+  {
+    title: 'Developer Platform Mentorship', org: 'Atlassian', orgSlug: 'atlassian', department: 'Engineering · Platform',
+    summary: 'Build developer-facing platform APIs and tooling.',
+    objectives: ['Design a public API', 'Ship a developer tool'],
+    deliverables: ['A documented API', 'A developer CLI/tool'],
+    milestones: [ms(3, 'API', 'Design + review'), ms(10, 'Tool', 'Ship tooling')],
+    durationWeeks: 12, intensity: 'moderate', weeklyHours: 10, cap: 45, applicants: 19,
+    requiredSkills: [rs('Java', 0.4, 80), rs('React', 0.3, 75), rs('REST APIs', 0.3, 75)],
+    domainTags: ['Backend', 'Platform'], interestTags: ['APIs', 'Developer Tools'], aspirationTags: ['Platform Engineer', 'Backend Engineer'],
+    cultureAnimalAffinity: { beaver: 75, owl: 65, ant: 60 }, factorWeights: FW, slaHours: 72, closesInDays: 8,
+  },
+]
+
+const sk = (name: string, level: number) => ({ name, level })
+
+const CANDIDATES = [
+  {
+    name: 'John Doe', headline: 'Penultimate-year CS student', university: 'Sunway University', program: 'Computer Science',
+    skills: [sk('React', 88), sk('TypeScript', 82), sk('Node.js', 70), sk('Python', 64), sk('Figma', 42)],
+    interests: ['UI Engineering', 'Design Systems', 'Machine Learning'], aspirations: ['Frontend Engineer', 'Product Engineer'],
+    availabilityHoursPerWeek: 12, animalKey: 'owl', reliabilityScore: 96,
+  },
+  {
+    name: 'Aisha Rahman', headline: 'Aspiring ML engineer', university: 'Universiti Malaya', program: 'Data Science',
+    skills: [sk('Python', 86), sk('TensorFlow', 76), sk('MLOps', 58), sk('SQL', 80)],
+    interests: ['Machine Learning', 'Research'], aspirations: ['ML Engineer', 'Researcher'],
+    availabilityHoursPerWeek: 24, animalKey: 'octopus', reliabilityScore: 92,
+  },
+  {
+    name: 'Marcus Tan', headline: 'Backend systems enthusiast', university: "Taylor's University", program: 'Software Engineering',
+    skills: [sk('Go', 72), sk('PostgreSQL', 76), sk('Node.js', 80), sk('gRPC', 52)],
+    interests: ['Systems', 'Reliability', 'Scalability'], aspirations: ['Backend Engineer', 'Platform Engineer'],
+    availabilityHoursPerWeek: 16, animalKey: 'beaver', reliabilityScore: 90,
+  },
+  {
+    name: 'Priya Nair', headline: 'Design-minded builder', university: 'Monash University Malaysia', program: 'Human-Computer Interaction',
+    skills: [sk('Figma', 82), sk('UX Research', 72), sk('Prototyping', 74), sk('React', 58)],
+    interests: ['Design', 'User Research'], aspirations: ['Product Designer', 'UX Researcher'],
+    availabilityHoursPerWeek: 10, animalKey: 'peacock', reliabilityScore: 94,
+  },
+]
+
 export const run = internalMutation({
   args: {},
   handler: async (ctx) => {
     for (const t of await ctx.db.query('tracks').collect()) await ctx.db.delete(t._id)
     for (const o of await ctx.db.query('organizations').collect()) await ctx.db.delete(o._id)
+    for (const c of await ctx.db.query('candidates').collect()) await ctx.db.delete(c._id)
 
-    const orgId: Record<string, import('./_generated/dataModel').Id<'organizations'>> = {}
-    for (const o of ORGS) {
-      orgId[o.slug] = await ctx.db.insert('organizations', { ...o, verified: true })
-    }
-
+    for (const o of ORGS) await ctx.db.insert('organizations', { ...o, verified: true })
     for (const t of TRACKS) {
-      const { org, ...rest } = t
-      await ctx.db.insert('tracks', {
-        orgId: orgId[org],
-        ...rest,
-        commitmentLine: commitmentLine(t.intensity, t.weeklyHours, t.durationWeeks),
-        status: 'open',
-      })
+      await ctx.db.insert('tracks', { ...t, status: 'open' })
     }
+    for (const c of CANDIDATES) await ctx.db.insert('candidates', c)
 
-    return `Seeded ${ORGS.length} organizations and ${TRACKS.length} tracks.`
+    return `Seeded ${ORGS.length} orgs, ${TRACKS.length} tracks, ${CANDIDATES.length} candidates.`
   },
 })

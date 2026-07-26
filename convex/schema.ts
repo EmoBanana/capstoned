@@ -2,9 +2,20 @@ import { defineSchema, defineTable } from 'convex/server'
 import { authTables } from '@convex-dev/auth/server'
 import { v } from 'convex/values'
 
+// Mirrors src/lib/domain.ts (Session A's foundation). Session B owns this file.
+// `tracks` / `candidates` follow domain.Track / domain.CandidateProfile, plus a
+// few Session-B extensions the live screens need (orgSlug, slaHours, closesInDays).
+
+const factorWeights = v.object({
+  technicalSkills: v.number(),
+  interests: v.number(),
+  aspirations: v.number(),
+  workingStyle: v.number(),
+  commitment: v.number(),
+})
+
 export default defineSchema({
   ...authTables,
-  // Override the auth `users` table to add our app role.
   users: defineTable({
     name: v.optional(v.string()),
     image: v.optional(v.string()),
@@ -13,40 +24,65 @@ export default defineSchema({
     phone: v.optional(v.string()),
     phoneVerificationTime: v.optional(v.number()),
     isAnonymous: v.optional(v.boolean()),
-    // App-specific:
     role: v.optional(v.union(v.literal('student'), v.literal('recruiter'))),
   }).index('email', ['email']),
 
+  // Session-B enrichment: brand logo + reliability, keyed by slug.
   organizations: defineTable({
     name: v.string(),
-    slug: v.string(), // brand-logo slug (simple-icons) or 'talentbank'
-    brandColor: v.string(), // hex without '#'
-    reliability: v.number(), // 0-100
+    slug: v.string(),
+    brandColor: v.string(),
+    reliability: v.number(),
     verified: v.boolean(),
   }).index('by_slug', ['slug']),
 
+  // domain.Track (+ orgSlug/slaHours/closesInDays/status extensions).
   tracks: defineTable({
-    orgId: v.id('organizations'),
     title: v.string(),
-    department: v.optional(v.string()),
-    description: v.optional(v.string()),
-    intensity: v.union(v.literal('Part-time'), v.literal('Full-time')),
+    org: v.string(),
+    orgSlug: v.string(),
+    department: v.string(),
+    summary: v.string(),
+    objectives: v.array(v.string()),
+    deliverables: v.array(v.string()),
+    milestones: v.array(
+      v.object({ id: v.string(), week: v.number(), title: v.string(), detail: v.string() }),
+    ),
     durationWeeks: v.number(),
+    intensity: v.union(v.literal('light'), v.literal('moderate'), v.literal('intense')),
     weeklyHours: v.number(),
-    commitmentLine: v.string(),
-    skills: v.array(v.string()),
-    applicants: v.number(),
     cap: v.number(),
+    applicants: v.number(),
+    requiredSkills: v.array(
+      v.object({ name: v.string(), weight: v.number(), targetLevel: v.number() }),
+    ),
+    domainTags: v.array(v.string()),
+    interestTags: v.array(v.string()),
+    aspirationTags: v.array(v.string()),
+    cultureAnimalAffinity: v.record(v.string(), v.number()),
+    factorWeights,
     slaHours: v.number(),
     closesInDays: v.number(),
-    fitScore: v.number(),
     status: v.union(
       v.literal('draft'),
       v.literal('open'),
       v.literal('in-progress'),
       v.literal('closed'),
     ),
-  })
-    .index('by_org', ['orgId'])
-    .index('by_status', ['status']),
+  }).index('by_status', ['status']),
+
+  // domain.CandidateProfile (+ optional link to the auth user).
+  candidates: defineTable({
+    userId: v.optional(v.id('users')),
+    name: v.string(),
+    headline: v.string(),
+    university: v.string(),
+    program: v.string(),
+    skills: v.array(v.object({ name: v.string(), level: v.number() })),
+    interests: v.array(v.string()),
+    aspirations: v.array(v.string()),
+    availabilityHoursPerWeek: v.number(),
+    animalKey: v.string(),
+    reliabilityScore: v.number(),
+  }).index('by_user', ['userId']),
 })
