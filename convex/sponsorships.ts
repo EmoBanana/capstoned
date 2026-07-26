@@ -85,7 +85,11 @@ export const offer = mutation({
       createdAt: Date.now(),
     }
     const candidate = await ctx.db.get(enrollment.candidateId)
-    await notify(ctx, candidate?.userId, 'micro-bond', `${fields.orgName} offered you a micro-bond: RM ${fields.amount.toLocaleString()}. Review and sign in My Mentorship.`, '/student/mentorship')
+    const offerText =
+      fields.amount > 0
+        ? `${fields.orgName} offered you a micro-bond: RM ${fields.amount.toLocaleString()}. Review and sign in My Mentorship.`
+        : `${fields.orgName} offered you a commitment agreement. Review and sign in My Mentorship.`
+    await notify(ctx, candidate?.userId, 'micro-bond', offerText, '/student/mentorship')
 
     if (existing) {
       await ctx.db.patch(existing._id, fields)

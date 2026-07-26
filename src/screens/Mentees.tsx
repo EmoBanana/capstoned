@@ -284,7 +284,8 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
         return (
           <div className={`mt-6 flex flex-wrap items-center justify-between gap-3 rounded-[2px] border px-4 py-3 ${executed ? 'border-success/40 bg-success-soft/40' : 'border-gold/40 bg-gold-soft/40'}`}>
             <p className="text-sm text-ink">
-              <span className="font-bold">Micro-bond</span> · RM {sponsorship.amount.toLocaleString()} ·{' '}
+              <span className="font-bold">{sponsorship.amount > 0 ? 'Micro-bond' : 'Commitment'}</span>
+              {sponsorship.amount > 0 ? ` · RM ${sponsorship.amount.toLocaleString()}` : ''} ·{' '}
               {sponsorship.commitmentMonths}-month {sponsorship.commitmentKind === 'contract' ? 'contract' : 'priority hiring'}
               {executed && sponsorship.contractNo ? ` · ${sponsorship.contractNo}` : ''}
             </p>
@@ -394,11 +395,11 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
             </div>
             <div className="space-y-5 px-6 py-5">
               <p className="text-xs leading-relaxed text-ink-soft">
-                A micro-bond sponsors this mentee in exchange for a short commitment — a lighter investment than a scholarship, made this early.
+                A micro-bond sponsors this mentee in exchange for a short commitment, a lighter investment than a scholarship made this early. Leave the amount blank to offer a commitment-only agreement with no sponsorship clause.
               </p>
               <div className="grid grid-cols-2 gap-4">
-                <Field label="Amount (RM)" htmlFor="mb-amount">
-                  <Input id="mb-amount" type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} className="tabular-nums" />
+                <Field label="Amount (RM)" hint="optional" htmlFor="mb-amount">
+                  <Input id="mb-amount" type="number" min={0} value={amount} onChange={(e) => setAmount(e.target.value)} className="tabular-nums" placeholder="0" />
                 </Field>
                 <Field label="For" htmlFor="mb-type">
                   <Select id="mb-type" value={type} onChange={(e) => setType(e.target.value as 'milestone' | 'period')}>

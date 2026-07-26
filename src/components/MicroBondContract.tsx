@@ -29,6 +29,13 @@ const money = (n: number) => `RM ${n.toLocaleString('en-MY')}`
 const fmtDate = (ms: number) =>
   new Date(ms).toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
 
+/** A sponsorship with a zero (blank) amount is a pure commitment agreement:
+ *  no monetary micro-bond, so the Sponsorship clause is dropped entirely. */
+const hasSponsorship = (s: ContractSponsorship) => s.amount > 0
+const sponsorLabel = (s: ContractSponsorship) => (hasSponsorship(s) ? 'the Sponsor' : 'the Company')
+const agreementTitle = (s: ContractSponsorship) =>
+  hasSponsorship(s) ? 'MICRO-BOND SPONSORSHIP AGREEMENT' : 'MENTORSHIP COMMITMENT AGREEMENT'
+
 function commitmentClause(s: ContractSponsorship) {
   return s.commitmentKind === 'contract'
     ? `a ${s.commitmentMonths}-month employment contract with ${s.orgName}, to commence upon the Candidate's successful completion of the Track`
@@ -40,16 +47,23 @@ function disbursementClause(s: ContractSponsorship) {
     : `disbursed across the ${s.commitmentMonths}-month sponsorship period`
 }
 
-/** Clause list — plain data so it renders identically on-screen and in print. */
-function clauses(s: ContractSponsorship, studentName: string, trackTitle: string) {
-  return [
-    ['Sponsorship', `The Sponsor shall provide the Candidate a micro-bond of ${money(s.amount)} ("the Sponsorship"), ${disbursementClause(s)}.`],
-    ['Purpose', `The Sponsorship supports the Candidate's participation in the "${trackTitle}" mentorship track ("the Track").`],
-    ['Commitment', `In consideration of the Sponsorship, the Candidate agrees to ${commitmentClause(s)}.`],
-    ['Good faith', 'Both parties shall act in good faith. The Candidate shall maintain active participation in the Track; the Sponsor shall honour the Sponsorship and the commitment above.'],
-    ['Reliability', "This agreement is recorded on CapStoned and reflected in both parties' reliability scores. Failure to honour it without justified cause may reduce the defaulting party's score."],
-    ['Termination', 'Either party may terminate for justified cause (e.g. withdrawal from the Track) with written notice. Sponsorship already disbursed for completed milestones is non-refundable.'],
-  ] as const
+/** Clause list — plain data so it renders identically on-screen and in print.
+ *  The Sponsorship clause appears only when an amount was set; without it the
+ *  document is a commitment-only agreement and the wording adapts. */
+function clauses(s: ContractSponsorship, studentName: string, trackTitle: string): [string, string][] {
+  const paid = hasSponsorship(s)
+  const list: [string, string][] = []
+  if (paid) {
+    list.push(['Sponsorship', `The Sponsor shall provide the Candidate a micro-bond of ${money(s.amount)} ("the Sponsorship"), ${disbursementClause(s)}.`])
+  }
+  list.push(['Purpose', `${paid ? 'The Sponsorship supports' : 'This Agreement supports'} the Candidate's participation in the "${trackTitle}" mentorship track ("the Track").`])
+  list.push(['Commitment', `${paid ? 'In consideration of the Sponsorship, the Candidate' : 'The Candidate'} agrees to ${commitmentClause(s)}.`])
+  list.push(['Good faith', `Both parties shall act in good faith. The Candidate shall maintain active participation in the Track; ${sponsorLabel(s)} shall honour ${paid ? 'the Sponsorship and the commitment above' : 'the commitment above'}.`])
+  list.push(['Reliability', "This agreement is recorded on CapStoned and reflected in both parties' reliability scores. Failure to honour it without justified cause may reduce the defaulting party's score."])
+  list.push(['Termination', paid
+    ? 'Either party may terminate for justified cause (e.g. withdrawal from the Track) with written notice. Sponsorship already disbursed for completed milestones is non-refundable.'
+    : 'Either party may terminate for justified cause (e.g. withdrawal from the Track) with written notice.'])
+  return list
 }
 
 function buildContractHtml(s: ContractSponsorship, studentName: string, trackTitle: string) {
@@ -57,6 +71,7 @@ function buildContractHtml(s: ContractSponsorship, studentName: string, trackTit
     .map(([h, b], i) => `<li><b>${i + 1}. ${h}.</b> ${b}</li>`)
     .join('')
   const signed = s.signedName && s.signedAt
+  const title = agreementTitle(s)
   return `<!doctype html><html><head><meta charset="utf-8"><title>${s.contractNo ?? 'Micro-Bond Agreement'}</title>
   <style>
     *{box-sizing:border-box} body{font-family:Georgia,'Times New Roman',serif;color:#1a1a1a;max-width:720px;margin:40px auto;padding:0 32px;line-height:1.55}
@@ -68,14 +83,14 @@ function buildContractHtml(s: ContractSponsorship, studentName: string, trackTit
     .ink{font-family:'Snell Roundhand','Segoe Script',cursive;font-size:24px;color:#0a2540}
     .stamp{margin-top:28px;font-size:12px;color:#0a7d3c;border:1px solid #0a7d3c;display:inline-block;padding:4px 10px;border-radius:3px}
   </style></head><body>
-  <h1>MICRO-BOND SPONSORSHIP AGREEMENT</h1>
+  <h1>${title}</h1>
   <div class="sub">${s.title}</div>
   <div class="meta"><span>Contract No: ${s.contractNo ?? '—'}</span><span>Offered: ${fmtDate(s.createdAt)}</span></div>
-  <p class="parties">This Agreement is made between <b>${s.orgName}</b> ("the Sponsor") and <b>${studentName}</b> ("the Candidate").</p>
+  <p class="parties">This Agreement is made between <b>${s.orgName}</b> ("${sponsorLabel(s)}") and <b>${studentName}</b> ("the Candidate").</p>
   <ol>${rows}</ol>
   <div class="sig">
     <div><div class="ink">${signed ? s.signedName : ''}</div><div class="line">Candidate — ${studentName}${signed ? ` · Signed ${fmtDate(s.signedAt!)}` : ''}</div></div>
-    <div><div class="ink">${s.orgName}</div><div class="line">For and on behalf of the Sponsor</div></div>
+    <div><div class="ink">${s.orgName}</div><div class="line">For and on behalf of ${sponsorLabel(s)}</div></div>
   </div>
   ${signed ? `<div class="stamp">✓ EXECUTED · ${s.contractNo}</div>` : ''}
   </body></html>`
@@ -141,7 +156,7 @@ export default function MicroBondContract({
         {/* Contract body */}
         <div className="overflow-y-auto px-6 py-6 sm:px-10" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
           <div className="text-center">
-            <h1 className="text-lg font-black tracking-wide text-ink">MICRO-BOND SPONSORSHIP AGREEMENT</h1>
+            <h1 className="text-lg font-black tracking-wide text-ink">{agreementTitle(s)}</h1>
             <p className="mt-1 text-[11px] font-bold uppercase tracking-[0.14em] text-ink-faint">{s.title}</p>
           </div>
           <div className="my-5 flex justify-between border-y border-line py-2.5 text-xs text-ink-soft">
@@ -149,7 +164,7 @@ export default function MicroBondContract({
             <span>Offered: {fmtDate(s.createdAt)}</span>
           </div>
           <p className="text-sm leading-relaxed text-ink">
-            This Agreement is made between <b>{s.orgName}</b> ("the Sponsor") and <b>{studentName || 'the Candidate'}</b> ("the Candidate").
+            This Agreement is made between <b>{s.orgName}</b> ("{sponsorLabel(s)}") and <b>{studentName || 'the Candidate'}</b> ("the Candidate").
           </p>
           <ol className="mt-4 space-y-3">
             {rows.map(([h, b], i) => (
@@ -171,7 +186,7 @@ export default function MicroBondContract({
             </div>
             <div className="flex-1">
               <div className="min-h-[34px] text-2xl text-[#0a2540]" style={{ fontFamily: '"Snell Roundhand","Segoe Script",cursive' }}>{s.orgName}</div>
-              <div className="border-t border-ink/60 pt-1.5 text-[11px] text-ink-soft">For and on behalf of the Sponsor</div>
+              <div className="border-t border-ink/60 pt-1.5 text-[11px] text-ink-soft">For and on behalf of {sponsorLabel(s)}</div>
             </div>
           </div>
           {executed && (

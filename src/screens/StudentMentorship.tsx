@@ -200,9 +200,15 @@ export default function StudentMentorship({ onNavigate }: { onNavigate?: (id: st
                 <Badge tone="gold">Action required</Badge>
               </div>
               <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink">
-                <span className="font-bold">{sponsorship.orgName}</span> has offered you a{' '}
-                <span className="font-bold tabular-nums">RM {sponsorship.amount.toLocaleString()}</span>{' '}
-                {sponsorship.title} — in exchange for a {sponsorship.commitmentMonths}-month{' '}
+                <span className="font-bold">{sponsorship.orgName}</span> has offered you{' '}
+                {sponsorship.amount > 0 ? (
+                  <>
+                    a <span className="font-bold tabular-nums">RM {sponsorship.amount.toLocaleString()}</span> {sponsorship.title}, in exchange for
+                  </>
+                ) : (
+                  <>a commitment agreement for</>
+                )}{' '}
+                a {sponsorship.commitmentMonths}-month{' '}
                 {sponsorship.commitmentKind === 'contract' ? 'employment contract' : 'priority-hiring commitment'} once the track completes.
                 Review the full agreement before signing.
               </p>
@@ -219,7 +225,8 @@ export default function StudentMentorship({ onNavigate }: { onNavigate?: (id: st
         <Card className="mt-5 border-success/30 bg-success-soft p-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-sm font-medium text-success-ink">
-              ✓ Micro-bond executed — {sponsorship.orgName}, RM {sponsorship.amount.toLocaleString()},{' '}
+              ✓ {sponsorship.amount > 0 ? 'Micro-bond' : 'Commitment'} executed · {sponsorship.orgName}
+              {sponsorship.amount > 0 ? `, RM ${sponsorship.amount.toLocaleString()}` : ''},{' '}
               {sponsorship.commitmentMonths}-month {sponsorship.commitmentKind === 'contract' ? 'contract' : 'priority hiring'}
               {sponsorship.contractNo ? ` · ${sponsorship.contractNo}` : ''}.
             </p>
