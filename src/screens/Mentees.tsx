@@ -57,12 +57,75 @@ function Monogram({ initials, size = 'md' }: { initials: string; size?: 'md' | '
   )
 }
 
+/** One task with a full status control + editable per-task mentor feedback. */
+function TaskRow({
+  task,
+  mentorName,
+  onStatus,
+  onNote,
+}: {
+  task: { id: string; title: string; status: string; dueLabel?: string; mentorNote?: string }
+  mentorName: string
+  onStatus: (status: TaskStatus) => void
+  onNote: (note: string) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(task.mentorNote ?? '')
+
+  return (
+    <div className="rounded-[2px] border border-line bg-white px-4 py-3.5">
+      <div className="flex items-start justify-between gap-3">
+        <p className={`text-sm font-semibold text-ink ${task.status === 'done' ? 'line-through opacity-60' : ''}`}>{task.title}</p>
+        <select
+          value={task.status}
+          onChange={(e) => onStatus(e.target.value as TaskStatus)}
+          aria-label={`Set status for ${task.title}`}
+          className="shrink-0 border border-line-strong bg-cream px-2 py-1 text-xs font-semibold text-ink rounded-[2px] focus:border-ink focus:outline-none"
+        >
+          {(Object.keys(TASK_META) as TaskStatus[]).map((s) => (
+            <option key={s} value={s}>{TASK_META[s].label}</option>
+          ))}
+        </select>
+      </div>
+
+      {task.dueLabel && (
+        <div className="mt-2">
+          <span className={`text-[11px] font-bold uppercase tracking-[0.06em] tabular-nums ${task.status === 'blocked' ? 'text-danger-ink' : 'text-ink-faint'}`}>{task.dueLabel}</span>
+        </div>
+      )}
+
+      {editing ? (
+        <div className="mt-3">
+          <Textarea rows={2} value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Feedback on this task — the mentee sees it." />
+          <div className="mt-2 flex gap-2">
+            <Button size="sm" onClick={() => { onNote(draft); setEditing(false) }}>Save note</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setDraft(task.mentorNote ?? ''); setEditing(false) }}>Cancel</Button>
+          </div>
+        </div>
+      ) : task.mentorNote ? (
+        <div className="mt-3 border-l-2 border-gold/40 bg-gold-soft/40 px-3 py-2">
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-ink-faint">Mentor note · {mentorName}</div>
+            <button type="button" onClick={() => { setDraft(task.mentorNote ?? ''); setEditing(true) }} className="shrink-0 text-[11px] font-semibold text-ink-faint transition-colors hover:text-ink">Edit</button>
+          </div>
+          <p className="mt-0.5 text-xs leading-relaxed text-ink-soft">{task.mentorNote}</p>
+        </div>
+      ) : (
+        <button type="button" onClick={() => { setDraft(''); setEditing(true) }} className="mt-3 text-xs font-semibold text-slate transition-colors hover:text-ink">
+          + Add feedback
+        </button>
+      )}
+    </div>
+  )
+}
+
 function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: string }) {
   const sponsorship = useQuery(api.sponsorships.forEnrollment, { enrollmentId: mentee.enrollmentId as Id<'enrollments'> })
   const offer = useMutation(api.sponsorships.offer)
   const addFeedback = useMutation(api.enrollments.addFeedback)
   const setStanding = useMutation(api.enrollments.setStatus)
-  const reviewTask = useMutation(api.tasks.review)
+  const setTaskStatus = useMutation(api.tasks.setStatus)
+  const setTaskNote = useMutation(api.tasks.setNote)
   const addTask = useMutation(api.tasks.add)
   const advanceWeek = useMutation(api.enrollments.advanceWeek)
   const logHours = useMutation(api.enrollments.logHours)
@@ -239,38 +302,15 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
       <div className="mt-5">
         <h4 className="mb-3 text-[11px] font-bold uppercase tracking-[0.14em] text-ink-faint">Ongoing tasks</h4>
         <div className="flex flex-col gap-3">
-          {mentee.tasks.map((t) => {
-            const tm = TASK_META[t.status as TaskStatus]
-            return (
-              <div key={t.id} className="rounded-[2px] border border-line bg-white px-4 py-3.5">
-                <div className="flex items-start justify-between gap-3">
-                  <p className={`text-sm font-semibold text-ink ${t.status === 'done' ? 'opacity-70' : ''}`}>{t.title}</p>
-                  <div className="shrink-0"><Badge tone={tm.tone}>{tm.label}</Badge></div>
-                </div>
-                {t.dueLabel && (
-                  <div className="mt-2">
-                    <span className={`text-[11px] font-bold uppercase tracking-[0.06em] tabular-nums ${t.status === 'blocked' ? 'text-danger-ink' : 'text-ink-faint'}`}>{t.dueLabel}</span>
-                  </div>
-                )}
-                {t.mentorNote && (
-                  <div className="mt-3 border-l-2 border-gold/40 bg-gold-soft/40 px-3 py-2">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-ink-faint">Mentor note · {mentee.mentorName}</div>
-                    <p className="mt-0.5 text-xs leading-relaxed text-ink-soft">{t.mentorNote}</p>
-                  </div>
-                )}
-                {t.status === 'submitted' && (
-                  <div className="mt-3 flex items-center gap-2">
-                    <Button size="sm" onClick={() => void reviewTask({ taskId: t.id as Id<'tasks'>, decision: 'approve' })}>
-                      Approve
-                    </Button>
-                    <Button size="sm" variant="secondary" onClick={() => void reviewTask({ taskId: t.id as Id<'tasks'>, decision: 'return' })}>
-                      Return for changes
-                    </Button>
-                  </div>
-                )}
-              </div>
-            )
-          })}
+          {mentee.tasks.map((t) => (
+            <TaskRow
+              key={t.id}
+              task={t}
+              mentorName={mentee.mentorName}
+              onStatus={(status) => void setTaskStatus({ taskId: t.id as Id<'tasks'>, status })}
+              onNote={(note) => void setTaskNote({ taskId: t.id as Id<'tasks'>, note })}
+            />
+          ))}
 
           <div className="flex items-center gap-2 rounded-[2px] border border-dashed border-line-strong px-4 py-3">
             <input

@@ -29,6 +29,7 @@ type Program = {
   cap: number
   deliverables: string[]
   skills: string[]
+  checkpoints: { label: string; weight: number }[]
   applicants: number
   enrolled: number
   avgFit: number | null
@@ -156,12 +157,20 @@ function TrackEditModal({
   const [slaHours, setSlaHours] = useState(String(program.slaHours))
   const [intensity, setIntensity] = useState<Intensity>(program.intensity)
   const [deliverables, setDeliverables] = useState<string[]>(program.deliverables.length ? program.deliverables : [''])
+  const [checkpoints, setCheckpoints] = useState<{ label: string; weight: number }[]>(program.checkpoints ?? [])
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
   const setDeliverable = (i: number, val: string) => setDeliverables((d) => d.map((x, j) => (j === i ? val : x)))
   const addDeliverable = () => setDeliverables((d) => [...d, ''])
   const removeDeliverable = (i: number) => setDeliverables((d) => (d.length > 1 ? d.filter((_, j) => j !== i) : d))
+
+  const setCp = (i: number, key: 'label' | 'weight', val: string) =>
+    setCheckpoints((c) => c.map((x, j) => (j === i ? { ...x, [key]: key === 'weight' ? Math.max(0, Math.min(100, Math.round(Number(val) || 0))) : val } : x)))
+  const addCheckpoint = () => setCheckpoints((c) => [...c, { label: '', weight: 0 }])
+  const removeCheckpoint = (i: number) => setCheckpoints((c) => c.filter((_, j) => j !== i))
+  const cpTotal = checkpoints.reduce((s, c) => s + (c.weight || 0), 0)
+  const cpValid = checkpoints.length === 0 || cpTotal === 100
 
   const save = async () => {
     setSaving(true)
@@ -179,6 +188,7 @@ function TrackEditModal({
         intensity,
         requiredSkills: skillsText.split(',').map((s) => s.trim()).filter(Boolean).map((name) => ({ name, weight: 1, targetLevel: 80 })),
         deliverables: deliverables.map((d) => d.trim()).filter(Boolean),
+        checkpoints: checkpoints.map((c) => ({ label: c.label.trim(), weight: c.weight })).filter((c) => c.label),
       })
       onClose()
     } catch (e) {
@@ -235,12 +245,31 @@ function TrackEditModal({
             </div>
           </Field>
 
+          <Field
+            label="AI evaluation checkpoints"
+            hint={checkpoints.length ? `weights total ${cpTotal}% ${cpValid ? '✓' : '(must be 100%)'}` : 'what the AI assessment scores'}
+          >
+            <div className="space-y-2">
+              {checkpoints.map((c, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <Input value={c.label} onChange={(e) => setCp(i, 'label', e.target.value)} placeholder={`Checkpoint ${i + 1}`} />
+                  <div className="flex shrink-0 items-center gap-1">
+                    <Input type="number" min={0} max={100} value={String(c.weight)} onChange={(e) => setCp(i, 'weight', e.target.value)} className="w-16 tabular-nums" aria-label={`Weight for checkpoint ${i + 1}`} />
+                    <span className="text-xs text-ink-faint">%</span>
+                  </div>
+                  <button type="button" onClick={() => removeCheckpoint(i)} aria-label={`Remove checkpoint ${i + 1}`} className="shrink-0 px-1 text-ink-faint transition-colors hover:text-danger">✕</button>
+                </div>
+              ))}
+              <Button variant="secondary" size="sm" onClick={addCheckpoint}>+ Add checkpoint</Button>
+            </div>
+          </Field>
+
           <p className="text-xs text-ink-faint">Edits apply to future applicants and mentees. Mentees already enrolled keep their current plan, tasks, and progress.</p>
         </div>
         <div className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
           {error && <span className="mr-auto text-xs font-medium text-danger">{error}</span>}
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button disabled={title.trim().length < 2 || saving} onClick={save}>{saving ? 'Saving…' : 'Save changes'}</Button>
+          <Button disabled={title.trim().length < 2 || !cpValid || saving} onClick={save}>{saving ? 'Saving…' : 'Save changes'}</Button>
         </div>
       </div>
     </div>

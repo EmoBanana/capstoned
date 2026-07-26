@@ -52,3 +52,38 @@ export const add = mutation({
     return await ctx.db.insert('tasks', { enrollmentId, title: clean, status: 'todo', dueLabel, order })
   },
 })
+
+const TASK_STATUS = v.union(
+  v.literal('todo'),
+  v.literal('in-progress'),
+  v.literal('submitted'),
+  v.literal('done'),
+  v.literal('blocked'),
+)
+
+/** Mentor sets a task's status directly (mark done, reopen, block, etc.).
+ *  Moving a task to done is a positive reliability signal for the mentee. */
+export const setStatus = mutation({
+  args: { taskId: v.id('tasks'), status: TASK_STATUS },
+  handler: async (ctx, { taskId, status }) => {
+    const task = await ctx.db.get(taskId)
+    if (!task) throw new ConvexError('Task not found')
+    if (task.status === status) return
+    await ctx.db.patch(taskId, { status })
+    if (status === 'done') {
+      const enrollment = await ctx.db.get(task.enrollmentId)
+      if (enrollment) await recordEvent(ctx, 'candidate', enrollment.candidateId, 1, 'Completed a mentorship task')
+    }
+  },
+})
+
+/** Mentor sets (or clears) the note/feedback on a specific task. */
+export const setNote = mutation({
+  args: { taskId: v.id('tasks'), note: v.string() },
+  handler: async (ctx, { taskId, note }) => {
+    const task = await ctx.db.get(taskId)
+    if (!task) throw new ConvexError('Task not found')
+    const trimmed = note.trim()
+    await ctx.db.patch(taskId, { mentorNote: trimmed || undefined })
+  },
+})

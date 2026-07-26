@@ -200,6 +200,9 @@ export default function TrackBuilder() {
         slaHours,
         deliverables: deliverables.map((d) => d.title.trim()).filter(Boolean),
         requiredSkills,
+        checkpoints: checkpoints
+          .map((c) => ({ label: c.label.trim(), weight: Math.round(c.weight) || 0 }))
+          .filter((c) => c.label),
       })
       setPublished(true)
       router.push('/recruiter/dashboard')

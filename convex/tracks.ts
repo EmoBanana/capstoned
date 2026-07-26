@@ -44,6 +44,7 @@ export const list = query({
 })
 
 const skill = v.object({ name: v.string(), weight: v.number(), targetLevel: v.number() })
+const checkpoint = v.object({ label: v.string(), weight: v.number() })
 
 /** The signed-in recruiter publishes a real track under their own company. */
 export const create = mutation({
@@ -58,6 +59,7 @@ export const create = mutation({
     slaHours: v.number(),
     deliverables: v.array(v.string()),
     requiredSkills: v.array(skill),
+    checkpoints: v.optional(v.array(checkpoint)),
   },
   handler: async (ctx, a) => {
     const org = await myOrg(ctx)
@@ -91,6 +93,7 @@ export const create = mutation({
       aspirationTags: [],
       cultureAnimalAffinity: {},
       factorWeights: FW,
+      scoringCheckpoints: a.checkpoints ?? [],
       slaHours: a.slaHours,
       closesInDays: 14,
       status: 'open',
@@ -135,6 +138,7 @@ export const forOrgManage = query({
           cap: t.cap,
           deliverables: t.deliverables,
           skills: t.requiredSkills.map((s) => s.name),
+          checkpoints: t.scoringCheckpoints ?? [],
           applicants: t.applicants + apps.length,
           enrolled: enrollments.length,
           avgFit,
@@ -165,6 +169,7 @@ export const update = mutation({
     intensity: v.optional(INTENSITY),
     requiredSkills: v.optional(v.array(skill)),
     deliverables: v.optional(v.array(v.string())),
+    checkpoints: v.optional(v.array(checkpoint)),
   },
   handler: async (ctx, a) => {
     const org = await myOrg(ctx)
@@ -197,6 +202,7 @@ export const update = mutation({
       deliverables: deliverables ?? track.deliverables,
       objectives: deliverables ?? track.objectives,
       milestones,
+      scoringCheckpoints: a.checkpoints ?? track.scoringCheckpoints ?? [],
     })
     // Note: edits touch only the track document. Existing enrollments snapshot
     // their own totalWeeks + tasks at enrolment time, so mentees already in the

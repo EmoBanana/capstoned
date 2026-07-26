@@ -69,6 +69,9 @@ export default defineSchema({
     aspirationTags: v.array(v.string()),
     cultureAnimalAffinity: v.record(v.string(), v.number()),
     factorWeights,
+    // AI evaluation checkpoints (label + weight, summing to 100) mentees are
+    // assessed against. Optional so pre-existing tracks stay valid.
+    scoringCheckpoints: v.optional(v.array(v.object({ label: v.string(), weight: v.number() }))),
     slaHours: v.number(),
     closesInDays: v.number(),
     status: v.union(
