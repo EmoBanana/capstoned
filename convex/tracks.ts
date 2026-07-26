@@ -237,8 +237,15 @@ export const editable = query({
     const org = await myOrg(ctx)
     const track = await ctx.db.get(trackId)
     if (!track || !org || track.orgSlug !== org.slug) return null
+    // Real demand so far — the recruiter needs this to pick a sane cap, since
+    // enrolled mentees hold seats and pending applicants are still competing.
+    const apps = await ctx.db.query('applications').withIndex('by_track', (q) => q.eq('trackId', trackId)).collect()
+    const enrolls = await ctx.db.query('enrollments').withIndex('by_track', (q) => q.eq('trackId', trackId)).collect()
     return {
       id: track._id as string,
+      applicants: apps.length,
+      pendingApplicants: apps.filter((a) => a.status === 'pending').length,
+      enrolled: enrolls.length,
       title: track.title,
       department: track.department,
       summary: track.summary,

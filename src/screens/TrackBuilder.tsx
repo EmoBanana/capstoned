@@ -446,6 +446,16 @@ export default function TrackBuilder({ editId = null }: { editId?: string | null
                       onChange={(e) => setCap(e.target.value)}
                       className="tabular-nums"
                     />
+                    {isEdit && editData && (
+                      <p className="mt-1.5 text-[11px] leading-relaxed text-ink-faint">
+                        <span className="font-medium text-ink-soft">{editData.enrolled} enrolled</span>
+                        {' · '}{editData.pendingApplicants} awaiting review
+                        {' · '}{editData.applicants} applied in total.{' '}
+                        {Number(cap) > 0 && Number(cap) < editData.enrolled && (
+                          <span className="font-medium text-danger">Cap is below the {editData.enrolled} already enrolled.</span>
+                        )}
+                      </p>
+                    )}
                   </Field>
                   <Field
                     label="Interview SLA (hours)"
