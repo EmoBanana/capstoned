@@ -225,7 +225,7 @@ export default function AnimalQuiz({
           {question.prompt}
         </h2>
         <p data-anim="q-item" className="mt-2 text-xs text-ink-faint">
-          Pick the option that fits you best — press 1–{question.options.length},
+          Pick the option that fits you best. Press 1–{question.options.length},
           or click.
         </p>
 
@@ -428,7 +428,7 @@ function ResultView({
       {/* ---------- Actions ---------- */}
       <div className="flex items-center justify-between border-t border-line px-6 py-4 sm:px-8">
         <p className="text-xs text-ink-faint">
-          A quick read — explore a track to feel the fit for real.
+          A quick read. Explore a track to feel the fit for real.
         </p>
         <Button variant="secondary" onClick={onRetake}>
           Retake

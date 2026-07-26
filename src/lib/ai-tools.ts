@@ -98,7 +98,7 @@ export function buildToolSystemPrompt(base: string): string {
 ---
 TOOLS
 
-You can take real actions by calling tools. When (and only when) the user asks you to DO something that a tool covers, respond with a SINGLE fenced code block tagged \`action\` containing one JSON object — nothing else, no prose around it:
+You can take real actions by calling tools. When (and only when) the user asks you to DO something that a tool covers, respond with a SINGLE fenced code block tagged \`action\` containing one JSON object and nothing else, with no prose around it:
 
 \`\`\`action
 { "tool": "<tool name>", "args": { ... } }
@@ -305,7 +305,7 @@ export const STUB_EXECUTORS: ToolExecutors = {
     const skillText = skills.length > 0 ? ` requiring ${skills.join(', ')}` : ''
     return {
       ok: true,
-      summary: `Created track "${title}" (draft) — ${durationWeeks} weeks, ${weeklyHours} h/week, ${intensity}${skillText}.`,
+      summary: `Created track "${title}" (draft): ${durationWeeks} weeks, ${weeklyHours} h/week, ${intensity}${skillText}.`,
       data: { title, skills, durationWeeks, weeklyHours, intensity, description, status: 'draft' },
     }
   },
@@ -345,7 +345,7 @@ export const STUB_EXECUTORS: ToolExecutors = {
     const basis = signals.length > 0 ? ` based on ${signals.join(', ')}` : ''
     return {
       ok: true,
-      summary: `Recommended "${pick.title}"${basis} — builds ${pick.skills.join(', ')} over ${pick.durationWeeks} weeks.`,
+      summary: `Recommended "${pick.title}"${basis}. It builds ${pick.skills.join(', ')} over ${pick.durationWeeks} weeks.`,
       data: { track: pick },
     }
   },

@@ -17,7 +17,7 @@ export default function AssistantPage() {
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink">
             Track Assistant
           </h1>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft text-justify hyphens-auto">
             Search live mentorship tracks and get data-backed recommendations
             ranked by the weighted decision matrix.
           </p>

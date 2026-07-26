@@ -83,8 +83,8 @@ export default function DemoPage() {
                 Couldn&apos;t sign in
               </h1>
               <p className="mt-2 text-sm leading-relaxed text-ink-soft">
-                The demo login didn&apos;t go through. This can happen if the auth
-                service is still waking up — give it another try.
+                The demo login didn&apos;t go through. This can happen when the auth
+                service is still waking up, so give it another try.
               </p>
               <Button className="mt-6" onClick={() => void attempt()}>
                 Try again

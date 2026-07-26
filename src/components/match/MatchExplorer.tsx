@@ -137,7 +137,7 @@ export default function MatchExplorer() {
           </p>
           <p className="mt-4 text-base font-semibold text-ink">No candidate profile yet.</p>
           <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-ink-soft">
-            The weighted-matrix report scores you against every track across five factors — starting
+            The weighted-matrix report scores you against every track across five factors, starting
             with your work-style archetype. Take the 12 Animals quiz first to build your profile,
             then come back for the in-depth read.
           </p>
@@ -169,9 +169,9 @@ export default function MatchExplorer() {
         <h1 className="mt-3 max-w-3xl text-3xl font-black leading-tight tracking-tight text-ink sm:text-4xl">
           Your weighted match, in depth
         </h1>
-        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft sm:text-base">
+        <p className="mt-3 max-w-2xl text-sm leading-relaxed text-ink-soft sm:text-base text-justify hyphens-auto">
           Every open track scored against <span className="font-semibold text-ink">{candidate.name}</span>{' '}
-          with an org-weighted decision matrix — the deep counterpart to your 12 Animals archetype.
+          with an org-weighted decision matrix, the deep counterpart to your 12 Animals archetype.
         </p>
       </header>
 
@@ -241,7 +241,7 @@ export default function MatchExplorer() {
                   </p>
                   {applyState.kind === 'success' && (
                     <p className="mt-1.5 text-xs font-semibold text-success-ink">
-                      Application submitted — the org is on the clock for your interview SLA.
+                      Application submitted. The org is now on the clock for your interview SLA.
                     </p>
                   )}
                   {applyState.kind === 'error' && (

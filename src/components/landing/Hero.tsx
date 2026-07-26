@@ -58,12 +58,12 @@ export function Hero({
 
           <p
             data-hero-sub
-            className="mt-6 max-w-xl text-base leading-relaxed text-ink-soft sm:text-lg"
+            className="mt-6 max-w-xl text-base leading-relaxed text-ink-soft sm:text-lg text-justify hyphens-auto"
           >
             Most people choose a path under pressure, then discover it never fit.
             CapStoned lets you live inside real companies through milestone-driven
-            mentorship tracks — real projects, real mentors, continuous feedback —
-            so you decide with evidence, not guesswork.
+            mentorship tracks (real projects, real mentors, continuous feedback),
+            so you decide with evidence rather than guesswork.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">

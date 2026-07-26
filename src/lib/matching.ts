@@ -148,7 +148,7 @@ function scoreWorkingStyle(candidate: CandidateProfile, track: Track): Scored {
   if (entries.length === 0) {
     return {
       score: 65,
-      rationale: `${candidateAnimal.emoji} ${candidateAnimal.name} — the track hasn't declared a cultural leaning, so working style is treated as neutral.`,
+      rationale: `${candidateAnimal.emoji} ${candidateAnimal.name}: the track hasn't declared a cultural leaning, so working style is treated as neutral.`,
     }
   }
 

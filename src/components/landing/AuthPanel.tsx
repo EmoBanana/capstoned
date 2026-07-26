@@ -176,7 +176,7 @@ export default function AuthPanel({
     } catch {
       setError(
         mode === 'register'
-          ? 'Could not create account — the email may already be registered, or the password is too short.'
+          ? 'Could not create account. The email may already be registered, or the password is too short.'
           : 'Could not sign in. Check your email and password.',
       )
       setPending(false)
@@ -403,7 +403,7 @@ export default function AuthPanel({
               href="/demo"
               className="text-xs font-semibold text-ink-soft underline underline-offset-2 hover:text-ink"
             >
-              Skip — explore the live demo
+              Skip and explore the live demo
             </Link>
           </div>
         </div>

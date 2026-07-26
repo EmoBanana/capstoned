@@ -317,7 +317,7 @@ export const QUIZ_QUESTIONS: QuizQuestion[] = [
     options: [
       {
         id: 'q4a',
-        label: 'Love it — improvising is where I thrive.',
+        label: 'Love it, improvising is where I thrive.',
         traitWeights: { adaptive: 30, creative: 10 },
       },
       {

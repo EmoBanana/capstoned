@@ -37,13 +37,13 @@ const BASE_SYSTEM_PROMPT =
   'When the user asks you to create, search, or recommend a track, use the matching tool.'
 
 const STARTERS: readonly string[] = [
-  'Create a 8-week backend track needing Go and SQL',
+  'Create an 8-week backend track that needs Go and SQL',
   'Find tracks that use React',
   'Recommend a track for someone who loves data',
 ]
 
 const GENERIC_ERROR =
-  'The assistant is unavailable right now — please try again in a moment.'
+  'The assistant is unavailable right now. Please try again in a moment.'
 
 /* ---- agent response shape --------------------------------------- */
 
@@ -394,7 +394,7 @@ export default function TrackAssistant({
             </h3>
             <p className="mt-2 max-w-sm text-sm leading-relaxed text-ink-soft">
               I can create a new mentorship track, search existing ones, or recommend a
-              fit — just ask in plain language.
+              fit. Just ask in plain language.
             </p>
           </div>
         ) : (

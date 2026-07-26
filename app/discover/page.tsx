@@ -38,7 +38,7 @@ export default function DiscoverPage() {
           <h1 className="mt-2 text-3xl font-bold tracking-tight text-ink">
             Find your direction
           </h1>
-          <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft">
+          <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink-soft text-justify hyphens-auto">
             Take the 12 Animals quiz to reveal your archetype, or talk it through
             with the Career Coach. Then see how you match real mentorship tracks.
           </p>
@@ -66,7 +66,7 @@ export default function DiscoverPage() {
       {animalKey && (
         <Card className="mb-6 flex flex-wrap items-center justify-between gap-4 border-gold/40 bg-gold-soft px-5 py-4">
           <p className="text-sm font-semibold text-ink">
-            Great — you&apos;re {ANIMALS[animalKey].emoji} {ANIMALS[animalKey].name}. See how you
+            You&apos;re {ANIMALS[animalKey].emoji} {ANIMALS[animalKey].name}. Now see how you
             match real tracks.
           </p>
           <Button onClick={() => router.push('/matches')}>See your matches</Button>

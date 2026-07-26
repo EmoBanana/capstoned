@@ -12,7 +12,7 @@ const COSTS: { stat: string; label: string; detail: string }[] = [
     stat: 'Years',
     label: 'Committed blind',
     detail:
-      'Degrees and first jobs are chosen from brochures and job titles — not from doing the actual work.',
+      'Degrees and first jobs are chosen from brochures and job titles, not from doing the actual work.',
   },
   {
     stat: 'One shot',
@@ -38,12 +38,12 @@ export function Problem() {
             <h2 className="mt-4 text-3xl font-black leading-tight tracking-tight text-ink sm:text-4xl">
               You commit to a career before you ever get to try it.
             </h2>
-            <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-soft">
-              Students — and career-changers of every age — pick academic and
-              professional paths under time pressure, with almost no lived
-              experience of what those paths actually feel like. The result is a
-              slow, costly correction that arrives years after the point of no
-              return.
+            <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-soft text-justify hyphens-auto">
+              People of every age, from secondary-school students to seasoned
+              career-changers, pick academic and professional paths under time
+              pressure, with almost no lived experience of what those paths
+              actually feel like. The result is a slow, costly correction that
+              arrives years after the point of no return.
             </p>
           </div>
 

@@ -233,7 +233,7 @@ export default function MatchReport({
         <div className="min-w-0 text-center sm:text-left">
           <Badge tone={band.tone}>{band.label}</Badge>
           <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-            An org-weighted decision matrix across five factors — the in-depth read behind{' '}
+            An org-weighted decision matrix across five factors: the in-depth read behind{' '}
             <span className="font-semibold text-ink">{candidate.name}</span>&rsquo;s{' '}
             <span aria-hidden="true">{animal.emoji}</span> {animal.name} archetype.
           </p>

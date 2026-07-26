@@ -19,8 +19,8 @@ export function AnimalsTeaser() {
           <h2 className="mt-4 text-3xl font-black leading-tight tracking-tight text-cream sm:text-4xl">
             Which animal do you work like?
           </h2>
-          <p className="mt-5 text-base leading-relaxed text-cream/70">
-            A two-minute quiz maps you to one of twelve work-style archetypes — the
+          <p className="mt-5 text-base leading-relaxed text-cream/70 text-justify hyphens-auto">
+            A two-minute quiz maps you to one of twelve work-style archetypes: the
             fast, playful way in. It becomes the signal that steers you toward tracks
             where you will genuinely thrive.
           </p>

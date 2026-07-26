@@ -20,7 +20,7 @@ const AUDIENCES: {
     tag: 'Candidates',
     title: 'Explore & get mentored',
     detail:
-      'Find your work-style, join tracks that fit, and build real evidence of what you are good at — and what you actually enjoy.',
+      'Find your work-style, join tracks that fit, and build real evidence of what you do well and what you genuinely enjoy.',
     points: ['Work-style discovery', 'Real projects & mentors', 'Reliability you own'],
     icon: UserIcon,
   },
@@ -28,7 +28,7 @@ const AUDIENCES: {
     tag: 'Employers',
     title: 'Design tracks, observe talent',
     detail:
-      'Craft milestone-driven tracks and watch how people really work over weeks — not how they interview for an hour.',
+      'Craft milestone-driven tracks and watch how people really work over weeks, not how they interview for an hour.',
     points: ['Author mentorship tracks', 'Signal over sound-bites', 'Mutual evaluation'],
     icon: BuildingIcon,
   },
@@ -36,7 +36,7 @@ const AUDIENCES: {
     tag: 'Universities',
     title: 'See early trajectory signal',
     detail:
-      'Understand where students are heading and where mismatches get averted early — insight, never a gate.',
+      'Understand where students are heading and where mismatches are averted early: insight, never a gate.',
     points: ['Cohort engagement', 'Mismatch averted', 'Never gatekeeping'],
     icon: CapIcon,
   },
@@ -51,8 +51,8 @@ export function Audiences() {
           <h2 className="mt-4 text-3xl font-black leading-tight tracking-tight text-ink sm:text-4xl">
             Three audiences, one shared source of truth.
           </h2>
-          <p className="mt-5 text-base leading-relaxed text-ink-soft">
-            Participation is voluntary on every side — the focus is learning and
+          <p className="mt-5 text-base leading-relaxed text-ink-soft text-justify hyphens-auto">
+            Participation is voluntary on every side, and the focus is learning and
             mutual evaluation, not recruitment.
           </p>
         </div>
