@@ -21,9 +21,7 @@ export function ClosingCTA({
           data-reveal
           className="mx-auto flex max-w-3xl flex-col items-center text-center"
         >
-          <span className="inline-flex h-12 w-12 items-center justify-center border border-line-strong bg-white text-gold rounded-[2px]">
-            <Logo className="h-6 w-6" />
-          </span>
+          <Logo className="h-11 w-11 text-gold" />
           <h2 className="mt-7 text-3xl font-black leading-[1.1] tracking-tight text-ink sm:text-5xl">
             Stop guessing. Start experiencing.
           </h2>

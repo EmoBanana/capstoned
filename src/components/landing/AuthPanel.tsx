@@ -211,9 +211,7 @@ export default function AuthPanel({
         {/* header */}
         <div className="flex items-start justify-between gap-4 border-b border-line px-7 pt-7 pb-5">
           <div className="flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center border border-line-strong bg-cream text-gold rounded-[2px]">
-              <Logo className="h-5 w-5" />
-            </span>
+            <Logo className="h-8 w-8 text-gold" />
             <div className="leading-none">
               <h2
                 id="auth-panel-title"
