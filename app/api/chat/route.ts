@@ -32,17 +32,20 @@ const TEXT_HEADERS = {
   'Cache-Control': 'no-cache',
 }
 
-// Local Ollama in dev; Groq once deployed (VERCEL is set in that environment).
+// Prefer hosted Groq whenever a key is present (dev too, so it works without a
+// local Ollama), else fall back to local Ollama. AI_PROVIDER forces one.
 function resolveProvider(): Provider {
   const explicit = process.env.AI_PROVIDER
   if (explicit === 'ollama' || explicit === 'groq') return explicit
-  if (process.env.VERCEL) return GROQ_API_KEY ? 'groq' : 'ollama'
-  return 'ollama'
+  return GROQ_API_KEY ? 'groq' : 'ollama'
 }
 
-// Local dev always uses Gemma via Ollama; the deployed link always uses Groq.
+// Try the preferred provider, then the other as a fallback. Groq is only tried
+// when a key exists.
 function providerOrder(): Provider[] {
-  return resolveProvider() === 'groq' ? ['groq'] : ['ollama']
+  const primary = resolveProvider()
+  const order: Provider[] = primary === 'groq' ? ['groq', 'ollama'] : ['ollama', 'groq']
+  return order.filter((p) => (p === 'groq' ? Boolean(GROQ_API_KEY) : true))
 }
 
 export async function POST(req: Request): Promise<Response> {
