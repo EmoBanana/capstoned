@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import gsap from 'gsap'
 import type { ChatMessage } from '../../lib/ai'
 import {
   STUB_EXECUTORS,
@@ -9,6 +10,10 @@ import {
   type ToolResult,
 } from '../../lib/ai-tools'
 import { Badge, Button, Card, Eyebrow, inputClass } from '../ui'
+
+/** useLayoutEffect on the client (runs before paint so the entrance tween's
+ *  hidden start state is applied without a flash); useEffect during SSR. */
+const useIso = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
 /* ------------------------------------------------------------------ */
 /*  Track Assistant                                                    */
@@ -231,6 +236,30 @@ export default function TrackAssistant({
   const abortRef = useRef<AbortController | null>(null)
   const scrollRef = useRef<HTMLDivElement | null>(null)
   const lastUserRef = useRef<string | null>(null)
+  /** Transcript length at the previous render, used to detect a genuinely
+   *  NEW turn (count grew) versus an in-place update of an existing turn
+   *  (e.g. a pending bubble becoming an assistant reply — same count). */
+  const prevCountRef = useRef(0)
+
+  // Entrance-animate only turns that were just added. Keyed on the turn
+  // COUNT, so in-place swaps (pending → assistant/tool at the same length)
+  // never re-trigger it. Animates transform/autoAlpha only, so layout — and
+  // the auto-scroll math below — is unaffected.
+  useIso(() => {
+    const el = scrollRef.current
+    const count = turns.length
+    const prev = prevCountRef.current
+    prevCountRef.current = count
+    if (!el || count <= prev) return
+    // prefers-reduced-motion → no tween; the new turn simply appears.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const added = Array.from(el.children).slice(prev)
+    if (added.length === 0) return
+    const ctx = gsap.context(() => {
+      gsap.from(added, { y: 8, autoAlpha: 0, duration: 0.28, ease: 'power2.out' })
+    }, el)
+    return () => ctx.revert()
+  }, [turns.length])
 
   useEffect(() => {
     const el = scrollRef.current

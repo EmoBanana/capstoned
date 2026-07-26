@@ -1,10 +1,15 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import gsap from 'gsap'
 import { streamChat, type ChatMessage } from '../../lib/ai'
 import { ANIMALS } from '../../lib/animals'
 import { ANIMAL_KEYS } from '../../lib/domain'
 import { Badge, Button, Card, Eyebrow, inputClass } from '../ui'
+
+/** useLayoutEffect on the client (runs before paint so the entrance tween's
+ *  hidden start state is applied without a flash); useEffect during SSR. */
+const useIso = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
 /* ------------------------------------------------------------------ */
 /*  AI Career Coach                                                    */
@@ -162,6 +167,29 @@ export default function CareerCoach({ className = '' }: { className?: string }) 
   const scrollRef = useRef<HTMLDivElement | null>(null)
   /** The last user message we attempted — used by "Retry" after a failure. */
   const lastUserRef = useRef<string | null>(null)
+  /** Message count at the previous render, so we can tell a genuinely NEW
+   *  bubble (count grew) from a streaming token update (count unchanged). */
+  const prevCountRef = useRef(0)
+
+  // Entrance-animate only bubbles that were just added. Keyed on the message
+  // COUNT, so streaming token updates (same count, new content) never
+  // re-trigger it. Animates transform/autoAlpha only, leaving layout — and
+  // therefore the auto-scroll math below — untouched.
+  useIso(() => {
+    const el = scrollRef.current
+    const count = turns.length
+    const prev = prevCountRef.current
+    prevCountRef.current = count
+    if (!el || count <= prev) return
+    // prefers-reduced-motion → no tween; the new bubble simply appears.
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+    const added = Array.from(el.children).slice(prev)
+    if (added.length === 0) return
+    const ctx = gsap.context(() => {
+      gsap.from(added, { y: 8, autoAlpha: 0, duration: 0.28, ease: 'power2.out' })
+    }, el)
+    return () => ctx.revert()
+  }, [turns.length])
 
   // Keep the transcript pinned to the newest message.
   useEffect(() => {
