@@ -85,6 +85,7 @@ export default function MicroBondContract({
   studentName,
   trackTitle,
   signing = false,
+  error = null,
   onSign,
   onDecline,
   onClose,
@@ -93,6 +94,7 @@ export default function MicroBondContract({
   studentName: string
   trackTitle: string
   signing?: boolean
+  error?: string | null
   onSign?: (name: string) => void
   onDecline?: () => void
   onClose: () => void
@@ -189,6 +191,7 @@ export default function MicroBondContract({
                 <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 accent-ink" />
                 <span>I have read and agree to the terms of this Agreement, and I am signing it electronically.</span>
               </label>
+              {error && <p className="text-xs font-medium text-danger">{error}</p>}
               <div className="flex items-center justify-between gap-3">
                 <Button variant="ghost" onClick={onDecline}>Decline offer</Button>
                 <Button

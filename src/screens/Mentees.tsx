@@ -60,10 +60,17 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
   const sponsorship = useQuery(api.sponsorships.forEnrollment, { enrollmentId: mentee.enrollmentId as Id<'enrollments'> })
   const offer = useMutation(api.sponsorships.offer)
   const addFeedback = useMutation(api.enrollments.addFeedback)
+  const reviewTask = useMutation(api.tasks.review)
+  const addTask = useMutation(api.tasks.add)
+  const advanceWeek = useMutation(api.enrollments.advanceWeek)
+  const logHours = useMutation(api.enrollments.logHours)
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [feedbackText, setFeedbackText] = useState('')
   const [sent, setSent] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
+  const [newTask, setNewTask] = useState('')
+  const [hours, setHours] = useState('4')
+  const enrollmentId = mentee.enrollmentId as Id<'enrollments'>
   const [showContract, setShowContract] = useState(false)
   const [amount, setAmount] = useState('3000')
   const [type, setType] = useState<'milestone' | 'period'>('milestone')
@@ -175,6 +182,24 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
             <span className="text-sm font-bold tabular-nums text-ink">Week {mentee.weekProgress} <span className="text-xs font-bold text-ink-faint">/ {mentee.totalWeeks}</span></span>
           </div>
           <ProgressBar value={mentee.weekProgress} max={mentee.totalWeeks} tone="ink" />
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Button size="sm" variant="secondary" disabled={mentee.weekProgress >= mentee.totalWeeks} onClick={() => void advanceWeek({ enrollmentId })}>
+              Advance week
+            </Button>
+            <div className="flex items-center gap-1.5">
+              <input
+                type="number"
+                min={1}
+                value={hours}
+                onChange={(e) => setHours(e.target.value)}
+                className="w-16 border border-line-strong bg-cream px-2 py-1.5 text-sm text-ink rounded-[2px] focus:border-ink focus:outline-none"
+                aria-label="Hours to log"
+              />
+              <Button size="sm" variant="ghost" onClick={() => void logHours({ enrollmentId, hours: Math.max(1, Number(hours) || 0) })}>
+                Log hrs
+              </Button>
+            </div>
+          </div>
         </div>
         <div>
           <div className="mb-1.5 flex items-baseline justify-between">
@@ -213,9 +238,40 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
                     <p className="mt-0.5 text-xs leading-relaxed text-ink-soft">{t.mentorNote}</p>
                   </div>
                 )}
+                {t.status === 'submitted' && (
+                  <div className="mt-3 flex items-center gap-2">
+                    <Button size="sm" onClick={() => void reviewTask({ taskId: t.id as Id<'tasks'>, decision: 'approve' })}>
+                      Approve
+                    </Button>
+                    <Button size="sm" variant="secondary" onClick={() => void reviewTask({ taskId: t.id as Id<'tasks'>, decision: 'return' })}>
+                      Return for changes
+                    </Button>
+                  </div>
+                )}
               </div>
             )
           })}
+
+          <div className="flex items-center gap-2 rounded-[2px] border border-dashed border-line-strong px-4 py-3">
+            <input
+              value={newTask}
+              onChange={(e) => setNewTask(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && newTask.trim()) { void addTask({ enrollmentId, title: newTask.trim() }); setNewTask('') }
+              }}
+              placeholder="Add a task for this mentee…"
+              className="flex-1 bg-transparent text-sm text-ink placeholder:text-ink-faint focus:outline-none"
+              aria-label="New task title"
+            />
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={!newTask.trim()}
+              onClick={() => { void addTask({ enrollmentId, title: newTask.trim() }); setNewTask('') }}
+            >
+              Add task
+            </Button>
+          </div>
         </div>
       </div>
 

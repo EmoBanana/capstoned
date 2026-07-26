@@ -1,3 +1,4 @@
+import { ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
@@ -119,9 +120,9 @@ export const addFeedback = mutation({
   args: { enrollmentId: v.id('enrollments'), body: v.string() },
   handler: async (ctx, { enrollmentId, body }) => {
     const text = body.trim()
-    if (!text) throw new Error('Feedback cannot be empty')
+    if (!text) throw new ConvexError('Feedback cannot be empty')
     const enrollment = await ctx.db.get(enrollmentId)
-    if (!enrollment) throw new Error('Enrollment not found')
+    if (!enrollment) throw new ConvexError('Enrollment not found')
 
     const userId = await getAuthUserId(ctx)
     const user = userId ? await ctx.db.get(userId) : null
@@ -131,5 +132,40 @@ export const addFeedback = mutation({
     await ctx.db.patch(enrollmentId, {
       feedback: [{ author, role: 'Mentor', when, body: text }, ...enrollment.feedback],
     })
+  },
+})
+
+const MENTEE_STATUS = v.union(
+  v.literal('ahead'),
+  v.literal('on-track'),
+  v.literal('needs-support'),
+  v.literal('at-risk'),
+)
+
+/** Mentor advances the mentorship a week (capped at the track length). */
+export const advanceWeek = mutation({
+  args: { enrollmentId: v.id('enrollments') },
+  handler: async (ctx, { enrollmentId }) => {
+    const e = await ctx.db.get(enrollmentId)
+    if (!e) throw new ConvexError('Enrollment not found')
+    await ctx.db.patch(enrollmentId, { weekProgress: Math.min(e.totalWeeks, e.weekProgress + 1) })
+  },
+})
+
+/** Mentor logs committed hours against the mentorship. */
+export const logHours = mutation({
+  args: { enrollmentId: v.id('enrollments'), hours: v.number() },
+  handler: async (ctx, { enrollmentId, hours }) => {
+    const e = await ctx.db.get(enrollmentId)
+    if (!e) throw new ConvexError('Enrollment not found')
+    await ctx.db.patch(enrollmentId, { hoursCommitted: Math.max(0, e.hoursCommitted + Math.round(hours)) })
+  },
+})
+
+/** Mentor sets the mentee's standing. */
+export const setStatus = mutation({
+  args: { enrollmentId: v.id('enrollments'), status: MENTEE_STATUS },
+  handler: async (ctx, { enrollmentId, status }) => {
+    await ctx.db.patch(enrollmentId, { status })
   },
 })

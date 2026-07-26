@@ -6,6 +6,7 @@ import { api } from '@/convex/_generated/api'
 import type { Id } from '@/convex/_generated/dataModel'
 import { Page, Card, Badge, Button, ProgressBar, Eyebrow } from '../components/ui'
 import MicroBondContract from '../components/MicroBondContract'
+import { errorText } from '../components/errors'
 
 /* ------------------------------------------------------------------ */
 /*  Student · My Mentorship — live Convex enrollment: progress, tasks   */
@@ -71,6 +72,7 @@ export default function StudentMentorship({ onNavigate }: { onNavigate?: (id: st
   const [banner, setBanner] = useState<string | null>(null)
   const [showContract, setShowContract] = useState(false)
   const [signing, setSigning] = useState(false)
+  const [signError, setSignError] = useState<string | null>(null)
 
   if (data === undefined) {
     return (
@@ -185,13 +187,17 @@ export default function StudentMentorship({ onNavigate }: { onNavigate?: (id: st
           studentName={me?.name ?? ''}
           trackTitle={data.trackTitle}
           signing={signing}
+          error={signError}
           onClose={() => setShowContract(false)}
           onSign={async (name) => {
             setSigning(true)
+            setSignError(null)
             try {
               await signContract({ sponsorshipId: sponsorship.id as Id<'sponsorships'>, signedName: name })
               setShowContract(false)
               setBanner(`Micro-bond contract signed. Welcome aboard — ${sponsorship.orgName} has been notified.`)
+            } catch (e) {
+              setSignError(errorText(e))
             } finally {
               setSigning(false)
             }

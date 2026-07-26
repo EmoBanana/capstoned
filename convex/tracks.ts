@@ -1,3 +1,4 @@
+import { ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { myOrg } from './organizations'
@@ -54,7 +55,7 @@ export const create = mutation({
   },
   handler: async (ctx, a) => {
     const org = await myOrg(ctx)
-    if (!org) throw new Error('Create your company profile first')
+    if (!org) throw new ConvexError('Create your company profile first')
 
     const spacing = Math.max(1, Math.floor(a.durationWeeks / Math.max(a.deliverables.length, 1)))
     const milestones = a.deliverables.map((d, i) => ({

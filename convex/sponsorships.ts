@@ -1,3 +1,4 @@
+import { ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
@@ -60,7 +61,7 @@ export const offer = mutation({
   },
   handler: async (ctx, args) => {
     const enrollment = await ctx.db.get(args.enrollmentId)
-    if (!enrollment) throw new Error('Enrollment not found')
+    if (!enrollment) throw new ConvexError('Enrollment not found')
     const track = await ctx.db.get(enrollment.trackId)
 
     const existing = (
@@ -96,9 +97,9 @@ export const sign = mutation({
   handler: async (ctx, { sponsorshipId, signedName }) => {
     const candidate = await myCandidate(ctx)
     const s = await ctx.db.get(sponsorshipId)
-    if (!s) throw new Error('Contract not found')
-    if (candidate && s.candidateId !== candidate._id) throw new Error('Not your contract')
-    if (!signedName.trim()) throw new Error('Signature required')
+    if (!s) throw new ConvexError('Contract not found')
+    if (candidate && s.candidateId !== candidate._id) throw new ConvexError('Not your contract')
+    if (!signedName.trim()) throw new ConvexError('Signature required')
 
     const now = Date.now()
     const contractNo =
@@ -121,7 +122,7 @@ export const decline = mutation({
     const candidate = await myCandidate(ctx)
     const s = await ctx.db.get(sponsorshipId)
     if (!s) return
-    if (candidate && s.candidateId !== candidate._id) throw new Error('Not your contract')
+    if (candidate && s.candidateId !== candidate._id) throw new ConvexError('Not your contract')
     await ctx.db.patch(sponsorshipId, { status: 'declined' })
   },
 })

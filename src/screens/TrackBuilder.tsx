@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
+import { errorText } from '../components/errors'
 import {
   Page,
   Button,
@@ -134,6 +135,7 @@ export default function TrackBuilder() {
 
   const [published, setPublished] = useState<boolean>(false)
   const [publishing, setPublishing] = useState<boolean>(false)
+  const [publishError, setPublishError] = useState<string | null>(null)
 
   /* --- dynamic row handlers --- */
   const addDeliverable = () =>
@@ -180,6 +182,7 @@ export default function TrackBuilder() {
   const publish = async () => {
     if (!canPublish || publishing) return
     setPublishing(true)
+    setPublishError(null)
     try {
       const requiredSkills = skillsText
         .split(',')
@@ -200,7 +203,8 @@ export default function TrackBuilder() {
       })
       setPublished(true)
       router.push('/recruiter/dashboard')
-    } catch {
+    } catch (e) {
+      setPublishError(errorText(e))
       setPublishing(false)
     }
   }
@@ -616,6 +620,9 @@ export default function TrackBuilder() {
             <p className="mt-3 text-right text-xs text-danger">
               Checkpoint weights must total 100% before publishing.
             </p>
+          )}
+          {publishError && (
+            <p className="mt-3 text-right text-xs font-medium text-danger">{publishError}</p>
           )}
           {published && (
             <p className="mt-3 text-right text-xs text-success">

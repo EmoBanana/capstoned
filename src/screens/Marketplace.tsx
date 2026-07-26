@@ -18,6 +18,7 @@ import {
   Textarea,
 } from '../components/ui'
 import { CompanyLogo } from '../components/CompanyLogo'
+import { errorText } from '../components/errors'
 
 const AVAILABILITY = ['Immediately', 'Within 2 weeks', 'Within a month', 'Flexible']
 
@@ -154,12 +155,14 @@ function ApplyModal({
   track,
   fit,
   submitting,
+  error,
   onClose,
   onSubmit,
 }: {
   track: TrackRow
   fit: number | null
   submitting: boolean
+  error: string | null
   onClose: () => void
   onSubmit: (note: string, availability: string, hours: number) => void
 }) {
@@ -225,6 +228,7 @@ function ApplyModal({
         </div>
 
         <div className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
+          {error && <span className="mr-auto text-xs font-medium text-danger">{error}</span>}
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
           <Button disabled={!valid || submitting} onClick={() => onSubmit(note.trim(), availability, hours)}>
             {submitting ? 'Submitting…' : 'Submit application'}
@@ -241,6 +245,7 @@ export default function Marketplace() {
   const [sort, setSort] = useState<SortKey>('fit')
   const [applyTrack, setApplyTrack] = useState<TrackRow | null>(null)
   const [submitting, setSubmitting] = useState(false)
+  const [applyError, setApplyError] = useState<string | null>(null)
 
   const trackData = useQuery(api.tracks.list)
   const candidate = useQuery(api.candidates.current)
@@ -416,7 +421,7 @@ export default function Marketplace() {
               track={track}
               fit={fitById.get(track.id) ?? null}
               applied={appliedSet.has(track.id)}
-              onApply={() => setApplyTrack(track)}
+              onApply={() => { setApplyError(null); setApplyTrack(track) }}
             />
           ))}
         </div>
@@ -427,9 +432,11 @@ export default function Marketplace() {
           track={applyTrack}
           fit={fitById.get(applyTrack.id) ?? null}
           submitting={submitting}
+          error={applyError}
           onClose={() => setApplyTrack(null)}
           onSubmit={async (note, availability, hours) => {
             setSubmitting(true)
+            setApplyError(null)
             try {
               await apply({
                 trackId: applyTrack.id as Id<'tracks'>,
@@ -439,6 +446,8 @@ export default function Marketplace() {
                 hoursPerWeek: hours,
               })
               setApplyTrack(null)
+            } catch (e) {
+              setApplyError(errorText(e))
             } finally {
               setSubmitting(false)
             }

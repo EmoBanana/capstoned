@@ -6,6 +6,7 @@ import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { Page, Eyebrow, Card, Button, Field, Input, Textarea } from '../components/ui'
 import { CompanyLogo } from '../components/CompanyLogo'
+import { errorText } from '../components/errors'
 
 /* ------------------------------------------------------------------ */
 /*  Company onboarding — a recruiter's real company profile. Creates    */
@@ -25,15 +26,18 @@ export default function CompanyOnboarding() {
   const [about, setAbout] = useState('')
   const [brandColor, setBrandColor] = useState(PALETTE[8])
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const valid = name.trim().length >= 2
 
   const submit = async () => {
     setSaving(true)
+    setError(null)
     try {
       await saveCompany({ name: name.trim(), department: department.trim(), about: about.trim(), brandColor })
       router.replace('/recruiter/dashboard')
-    } catch {
+    } catch (e) {
+      setError(errorText(e))
       setSaving(false)
     }
   }
@@ -96,8 +100,10 @@ export default function CompanyOnboarding() {
             </div>
           </Field>
         </div>
-        <div className="mt-6 flex items-center justify-between">
-          <p className="text-xs text-ink-faint">Candidates apply to your company, not the platform.</p>
+        <div className="mt-6 flex items-center justify-between gap-4">
+          <p className="text-xs text-ink-faint">
+            {error ? <span className="font-medium text-danger">{error}</span> : 'Candidates apply to your company, not the platform.'}
+          </p>
           <Button disabled={!valid || saving} onClick={submit}>
             {saving ? 'Saving…' : 'Create company & continue'}
           </Button>

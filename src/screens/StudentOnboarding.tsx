@@ -7,6 +7,7 @@ import { api } from '@/convex/_generated/api'
 import AnimalQuiz from '@/src/components/ai/AnimalQuiz'
 import { ANIMALS } from '@/src/lib/animals'
 import { Page, Eyebrow, Card, Button, Field, Input, Select, ProgressBar } from '../components/ui'
+import { errorText } from '../components/errors'
 
 /* ------------------------------------------------------------------ */
 /*  Student onboarding — builds a REAL, matchable profile and persists  */
@@ -93,6 +94,7 @@ export default function StudentOnboarding() {
   const [aspirations, setAspirations] = useState<string[]>([])
   const [hours, setHours] = useState(10)
   const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   const steps = ['Basics', 'Your archetype', 'Skills & goals']
   const addSkill = () => {
@@ -109,6 +111,7 @@ export default function StudentOnboarding() {
 
   const submit = async () => {
     setSaving(true)
+    setError(null)
     try {
       await saveProfile({
         headline: headline.trim(),
@@ -121,7 +124,8 @@ export default function StudentOnboarding() {
         animalKey: animalKey || 'owl',
       })
       router.replace('/student/marketplace')
-    } catch {
+    } catch (e) {
+      setError(errorText(e))
       setSaving(false)
     }
   }
@@ -249,6 +253,7 @@ export default function StudentOnboarding() {
           {!finalValid && (
             <p className="mt-2 text-right text-xs text-ink-faint">Add at least one skill, interest, and aspiration.</p>
           )}
+          {error && <p className="mt-2 text-right text-xs font-medium text-danger">{error}</p>}
         </Card>
       )}
     </Page>

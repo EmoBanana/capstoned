@@ -1,3 +1,4 @@
+import { ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
@@ -49,9 +50,9 @@ export const saveCompany = mutation({
   },
   handler: async (ctx, { name, department, about, brandColor }) => {
     const userId = await getAuthUserId(ctx)
-    if (!userId) throw new Error('Not signed in')
+    if (!userId) throw new ConvexError('Not signed in')
     const cleanName = name.trim()
-    if (!cleanName) throw new Error('Company name required')
+    if (!cleanName) throw new ConvexError('Company name required')
 
     // Already own one? Update it in place.
     const owned = await myOrg(ctx)
@@ -68,7 +69,7 @@ export const saveCompany = mutation({
 
     if (existing) {
       if (existing.ownerUserId && existing.ownerUserId !== userId) {
-        throw new Error('That company is already managed by another account')
+        throw new ConvexError('That company is already managed by another account')
       }
       // Claim the seeded (or previously-created) company.
       await ctx.db.patch(existing._id, {

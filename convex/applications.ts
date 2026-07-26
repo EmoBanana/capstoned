@@ -1,3 +1,4 @@
+import { ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
@@ -27,10 +28,10 @@ export const apply = mutation({
   },
   handler: async (ctx, { trackId, matchScore, note, availability, hoursPerWeek }) => {
     const candidate = await myCandidate(ctx)
-    if (!candidate) throw new Error('Complete your profile before applying')
-    if (!candidate.profileComplete) throw new Error('Finish onboarding before applying')
+    if (!candidate) throw new ConvexError('Complete your profile before applying')
+    if (!candidate.profileComplete) throw new ConvexError('Finish onboarding before applying')
     const track = await ctx.db.get(trackId)
-    if (!track) throw new Error('Track not found')
+    if (!track) throw new ConvexError('Track not found')
 
     const existing = (
       await ctx.db
@@ -160,10 +161,26 @@ export const setStatus = mutation({
   handler: async (ctx, { applicationId, status }) => {
     const app = await ctx.db.get(applicationId)
     if (!app) return
-    await ctx.db.patch(applicationId, { status })
-    if (status !== 'accepted') return
+
+    if (status !== 'accepted') {
+      await ctx.db.patch(applicationId, { status })
+      return
+    }
 
     const track = await ctx.db.get(app.trackId)
+
+    // Enforce the seat cap: an already-enrolled applicant (re-accept) is fine,
+    // but a NEW acceptance past the cap is rejected before anything changes.
+    const trackEnrollments = track
+      ? await ctx.db.query('enrollments').withIndex('by_track', (q) => q.eq('trackId', track._id)).collect()
+      : []
+    const already = trackEnrollments.find((e) => e.candidateId === app.candidateId)
+    if (track && !already && trackEnrollments.length >= track.cap) {
+      throw new ConvexError(`This track is at its seat cap of ${track.cap}. Close or expand it before accepting more.`)
+    }
+
+    await ctx.db.patch(applicationId, { status })
+
     // Reliability: interviewing within SLA is a positive signal for the org.
     const org = track ? (await ctx.db.query('organizations').collect()).find((o) => o.slug === track.orgSlug) : null
     if (org) {
@@ -179,13 +196,7 @@ export const setStatus = mutation({
 
     // Accepting creates a REAL enrollment (unless one already exists) so the
     // mentee + mentorship flow is driven by actual recruiter action, not seed.
-    const dupe = (
-      await ctx.db
-        .query('enrollments')
-        .withIndex('by_candidate', (q) => q.eq('candidateId', app.candidateId))
-        .collect()
-    ).find((e) => e.trackId === app.trackId)
-    if (dupe || !track) return
+    if (already || !track) return
 
     const recruiterId = await getAuthUserId(ctx)
     const recruiter = recruiterId ? await ctx.db.get(recruiterId) : null
