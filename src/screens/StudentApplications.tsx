@@ -18,6 +18,8 @@ type Party = 'company' | 'candidate'
 type App = {
   id: string
   status: 'pending' | 'accepted' | 'declined'
+  enrolledHere: boolean
+  closedByMentorship: boolean
   matchScore: number
   appliedAt: number
   slaDueAt: number
@@ -30,6 +32,7 @@ type App = {
   trackTitle: string
   org: string
   orgSlug: string
+  logoUrl: string | null
 }
 
 const STATUS_META: Record<App['status'], { label: string; tone: 'gold' | 'success' | 'neutral' }> = {
@@ -130,16 +133,20 @@ export default function StudentApplications() {
       ) : (
         <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2">
           {apps.map((a) => {
-            const meta = STATUS_META[a.status]
+            const badge = a.enrolledHere
+              ? { label: 'Enrolled', tone: 'success' as const }
+              : a.closedByMentorship
+                ? { label: 'Closed', tone: 'neutral' as const }
+                : STATUS_META[a.status]
             const rem = remaining(a.slaDueAt)
             return (
               <Card key={a.id} className="flex flex-col p-6">
                 <div className="flex items-start gap-3">
-                  <CompanyLogo slug={a.orgSlug} name={a.org} className="h-10 w-10" />
+                  <CompanyLogo slug={a.orgSlug} name={a.org} logoUrl={a.logoUrl} className="h-10 w-10" />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-start justify-between gap-2">
                       <p className="truncate text-sm font-semibold text-ink">{a.org}</p>
-                      <Badge tone={meta.tone}>{meta.label}</Badge>
+                      <Badge tone={badge.tone}>{badge.label}</Badge>
                     </div>
                     <h3 className="mt-1 text-base font-bold leading-snug tracking-tight text-ink">{a.trackTitle}</h3>
                   </div>
@@ -162,17 +169,29 @@ export default function StudentApplications() {
                   </p>
                 )}
 
-                {a.status === 'accepted' && (
+                {a.enrolledHere ? (
+                  <div className="mt-4 rounded-[2px] border border-success/30 bg-success-soft px-3 py-2.5">
+                    <p className="text-xs font-semibold text-success-ink">You're mentoring here — track it in My Mentorship.</p>
+                  </div>
+                ) : a.closedByMentorship ? (
+                  <div className="mt-4 rounded-[2px] border border-line bg-paper px-3 py-2.5">
+                    <p className="text-xs text-ink-soft">Closed — you joined another mentorship, and you can only hold one at a time.</p>
+                  </div>
+                ) : a.status === 'accepted' ? (
                   <InterviewPanel
                     app={a}
                     onAccept={() => void confirmInterview({ applicationId: a.id as Id<'applications'> })}
                     onCounter={(ms) => proposeInterview({ applicationId: a.id as Id<'applications'>, at: ms })}
                   />
-                )}
+                ) : null}
 
                 <div className="mt-auto flex items-center justify-between gap-3 pt-6 text-xs">
                   <span className="text-ink-faint">Applied {appliedLabel(a.appliedAt)}</span>
-                  {a.status === 'pending' ? (
+                  {a.enrolledHere ? (
+                    <span className="font-medium text-success-ink">Active mentorship</span>
+                  ) : a.closedByMentorship ? (
+                    <span className="text-ink-faint">Closed</span>
+                  ) : a.status === 'pending' ? (
                     <div className="flex items-center gap-3">
                       <span className={`${rem < 16 ? 'text-gold-ink font-medium' : 'text-ink-faint'}`}>
                         Interview within {rem}h

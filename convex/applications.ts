@@ -118,12 +118,17 @@ export const myTrackIds = query({
   },
 })
 
-/** The current student's applications, with track + status (My Applications). */
+/** The current student's applications, with track + status (My Applications).
+ *  Status is reconciled against the candidate's active mentorship: the enrolled
+ *  track reads as "enrolled", and any other application is closed — a candidate
+ *  can only hold one mentorship, so the rest are no longer live. */
 export const mine = query({
   args: {},
   handler: async (ctx) => {
     const candidate = await myCandidate(ctx)
     if (!candidate) return []
+    const active = await activeEnrollmentFor(ctx, candidate._id)
+    const enrolledTrackId = active ? (active.trackId as string) : null
     const apps = await ctx.db
       .query('applications')
       .withIndex('by_candidate', (q) => q.eq('candidateId', candidate._id))
@@ -131,9 +136,17 @@ export const mine = query({
     return Promise.all(
       apps.map(async (a) => {
         const track = await ctx.db.get(a.trackId)
+        const org = track
+          ? await ctx.db.query('organizations').withIndex('by_slug', (q) => q.eq('slug', track.orgSlug)).first()
+          : null
+        const logoUrl = org?.logoStorageId ? await ctx.storage.getUrl(org.logoStorageId) : null
+        const enrolledHere = enrolledTrackId !== null && (a.trackId as string) === enrolledTrackId
+        const closedByMentorship = enrolledTrackId !== null && !enrolledHere && a.status !== 'declined'
         return {
           id: a._id as string,
           status: a.status,
+          enrolledHere,
+          closedByMentorship,
           matchScore: a.matchScore,
           appliedAt: a.appliedAt,
           slaDueAt: a.slaDueAt,
@@ -144,8 +157,9 @@ export const mine = query({
           interviewProposedBy: a.interviewProposedBy ?? null,
           interviewStatus: a.interviewStatus ?? null,
           trackTitle: track?.title ?? '—',
-          org: track?.org ?? '',
+          org: org?.name ?? track?.org ?? '',
           orgSlug: track?.orgSlug ?? '',
+          logoUrl,
         }
       }),
     )
