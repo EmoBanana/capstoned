@@ -80,10 +80,23 @@ export const menteesForOrg = query({
     const track = (await ctx.db.query('tracks').collect()).find((t) => t.orgSlug === orgSlug)
     if (!track) return null
 
-    const enrollments = await ctx.db
+    const allEnrollments = await ctx.db
       .query('enrollments')
       .withIndex('by_track', (q) => q.eq('trackId', track._id))
       .collect()
+
+    // A candidate holds one active mentorship at a time. Drop any active row
+    // here that's been superseded by a newer active mentorship on another
+    // track, so a stale enrollment never lists them as our mentee. Finished
+    // (non-active) rows stay as this track's historical record.
+    const enrollments = []
+    for (const e of allEnrollments) {
+      if ((e.phase ?? 'active') === 'active') {
+        const current = await activeEnrollmentFor(ctx, e.candidateId)
+        if (current && (current._id as string) !== (e._id as string)) continue
+      }
+      enrollments.push(e)
+    }
 
     const mentees = await Promise.all(
       enrollments.map(async (e) => {

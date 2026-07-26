@@ -3,6 +3,7 @@ import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { myOrg } from './organizations'
 import { reliabilityDisplay } from './reliability'
+import { activeEnrollmentFor } from './enrollments'
 
 const FW = { technicalSkills: 0.3, interests: 0.2, aspirations: 0.15, workingStyle: 0.25, commitment: 0.1 }
 
@@ -125,10 +126,20 @@ export const forOrgManage = query({
           .query('applications')
           .withIndex('by_track', (q) => q.eq('trackId', t._id))
           .collect()
-        const enrollments = await ctx.db
+        const allEnrollments = await ctx.db
           .query('enrollments')
           .withIndex('by_track', (q) => q.eq('trackId', t._id))
           .collect()
+        // Count only real mentees — skip active rows superseded by the
+        // candidate's newer mentorship elsewhere (see menteesForOrg).
+        const enrollments = []
+        for (const e of allEnrollments) {
+          if ((e.phase ?? 'active') === 'active') {
+            const current = await activeEnrollmentFor(ctx, e.candidateId)
+            if (current && (current._id as string) !== (e._id as string)) continue
+          }
+          enrollments.push(e)
+        }
         const avgFit =
           enrollments.length > 0
             ? Math.round(enrollments.reduce((s, e) => s + e.fit, 0) / enrollments.length)
