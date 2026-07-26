@@ -116,8 +116,8 @@ function scoreInterests(candidate: CandidateProfile, track: Track): Scored {
 
   const rationale =
     matches > 0
-      ? `Shares ${matches} of ${tags.length} track interest area${tags.length === 1 ? '' : 's'} (${overlap.slice(0, 3).join(', ')}).`
-      : `None of the candidate's stated interests overlap the track's focus (${tags.slice(0, 3).join(', ')}).`
+      ? `Shares ${matches} of ${tags.length} track interest area${tags.length === 1 ? '' : 's'}, including ${overlap.slice(0, 3).join(', ')}.`
+      : `None of the candidate's stated interests overlap the track's focus on ${tags.slice(0, 3).join(', ')}.`
 
   return { score, rationale }
 }
@@ -134,8 +134,8 @@ function scoreAspirations(candidate: CandidateProfile, track: Track): Scored {
 
   const rationale =
     matches > 0
-      ? `The track advances ${matches} of the candidate's stated aspirations (${overlap.slice(0, 3).join(', ')}).`
-      : `The track doesn't clearly map to the candidate's stated aspirations (${tags.slice(0, 3).join(', ')}).`
+      ? `The track advances ${matches} of the candidate's stated aspirations, including ${overlap.slice(0, 3).join(', ')}.`
+      : `The track doesn't clearly map to the candidate's stated aspirations. Its focus is ${tags.slice(0, 3).join(', ')}.`
 
   return { score, rationale }
 }
@@ -171,7 +171,7 @@ function scoreWorkingStyle(candidate: CandidateProfile, track: Track): Scored {
 
   const rationale =
     direct !== undefined
-      ? `${candidateAnimal.emoji} ${candidateAnimal.name} maps directly onto the track's culture (${direct}% affinity), reinforced by trait alignment.`
+      ? `${candidateAnimal.emoji} ${candidateAnimal.name} maps directly onto the track's culture with ${direct}% affinity, reinforced by trait alignment.`
       : `${candidateAnimal.emoji} ${candidateAnimal.name} isn't the track's named archetype, but its traits align ${round(traitScore)}% with the culture's preferred styles.`
 
   return { score: clamp(score), rationale }
@@ -186,7 +186,7 @@ function scoreCommitment(candidate: CandidateProfile, track: Track): Scored {
 
   let capacity: string
   if (ratio >= 1) capacity = `has the ${track.weeklyHours} hrs/wk this track needs`
-  else capacity = `is short of the ${track.weeklyHours} hrs/wk this track needs (${candidate.availabilityHoursPerWeek} available)`
+  else capacity = `is short of the ${track.weeklyHours} hrs/wk this track needs, with only ${candidate.availabilityHoursPerWeek} available`
 
   const rationale = `Candidate ${capacity}; reliability of ${candidate.reliabilityScore}% factors into commitment confidence over the ${track.durationWeeks}-week track.`
 

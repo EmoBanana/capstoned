@@ -34,7 +34,7 @@ export const TOOLS: ToolDef[] = [
   {
     name: 'create_track',
     description:
-      'Create a new mentorship track (as a draft) when the user asks to make, add, or set up a track.',
+      'Create a new mentorship track as a draft when the user asks to make, add, or set up a track.',
     parameters: {
       title: 'string — the track name',
       skills: 'string[] — skills/technologies the track requires',
@@ -57,9 +57,9 @@ export const TOOLS: ToolDef[] = [
     description:
       'Search existing open tracks when the user wants to find, browse, or filter tracks. Provide any of the fields; leave the rest out.',
     parameters: {
-      query: 'string — free-text search over title/summary (optional)',
-      skill: 'string — a specific skill to filter by, e.g. "React" (optional)',
-      keyword: 'string — a domain/interest keyword, e.g. "backend" (optional)',
+      query: 'string — optional free-text search over title/summary',
+      skill: 'string — an optional skill to filter by, e.g. "React"',
+      keyword: 'string — an optional domain/interest keyword, e.g. "backend"',
     },
     example: { skill: 'React' },
   },
@@ -68,8 +68,8 @@ export const TOOLS: ToolDef[] = [
     description:
       "Recommend a single best-fit track when the user asks for a suggestion based on their interests or 12-Animals work-style archetype.",
     parameters: {
-      interests: 'string[] — the user\'s stated interests (optional)',
-      animal: 'string — the user\'s 12-Animals archetype key, e.g. "owl" (optional)',
+      interests: 'string[] — the user\'s stated interests, if any',
+      animal: 'string — the user\'s 12-Animals archetype key, e.g. "owl", if known',
     },
     example: { interests: ['data', 'problem solving'], animal: 'owl' },
   },
@@ -79,7 +79,7 @@ export const TOOLS: ToolDef[] = [
       "Apply to an open track on the user's behalf when they ask to apply to, sign up for, or join a track. Identify the track by the company or track name they mention.",
     parameters: {
       track: 'string — the company or track name to apply to',
-      note: 'string — a 1-2 sentence motivation for applying (optional)',
+      note: 'string — an optional 1-2 sentence motivation for applying',
     },
     example: {
       track: 'Stripe',
@@ -111,7 +111,7 @@ export function buildToolSystemPrompt(base: string): string {
 ---
 TOOLS
 
-You can take real actions by calling tools. When (and only when) the user asks you to DO something that a tool covers, respond with a SINGLE fenced code block tagged \`action\` containing one JSON object and nothing else, with no prose around it:
+You can take real actions by calling tools. Only when the user asks you to DO something that a tool covers should you respond with a SINGLE fenced code block tagged \`action\` containing one JSON object and nothing else, with no prose around it:
 
 \`\`\`action
 { "tool": "<tool name>", "args": { ... } }
@@ -318,7 +318,7 @@ export const STUB_EXECUTORS: ToolExecutors = {
     const skillText = skills.length > 0 ? ` requiring ${skills.join(', ')}` : ''
     return {
       ok: true,
-      summary: `Created track "${title}" (draft): ${durationWeeks} weeks, ${weeklyHours} h/week, ${intensity}${skillText}.`,
+      summary: `Created draft track "${title}": ${durationWeeks} weeks, ${weeklyHours} h/week, ${intensity}${skillText}.`,
       data: { title, skills, durationWeeks, weeklyHours, intensity, description, status: 'draft' },
     }
   },
@@ -335,7 +335,7 @@ export const STUB_EXECUTORS: ToolExecutors = {
       return { ok: true, summary: `No tracks matched "${needle}".`, data: { tracks: [] } }
     }
     const list = results
-      .map((t) => `${t.title} (${t.skills.join(', ')}, ${t.durationWeeks}w)`)
+      .map((t) => `${t.title} using ${t.skills.join(', ')} over ${t.durationWeeks}w`)
       .join('; ')
     const scope = needle ? ` matching "${needle}"` : ''
     return {
@@ -372,7 +372,7 @@ export const STUB_EXECUTORS: ToolExecutors = {
     const noteText = note ? ` with the note "${note}"` : ''
     return {
       ok: true,
-      summary: `Would apply to ${track}${noteText}. (Demo mode: no real application was submitted.)`,
+      summary: `Would apply to ${track}${noteText}. Demo mode: no real application was submitted.`,
       data: { track, note, status: 'stub' },
     }
   },

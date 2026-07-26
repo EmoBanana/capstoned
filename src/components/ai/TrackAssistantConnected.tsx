@@ -107,7 +107,7 @@ export default function TrackAssistantConnected({ className }: { className?: str
           }
         }
         const compact = matched.map((t) => ({ title: t.title, org: t.org, id: t.id }))
-        const list = compact.map((t) => `${t.title} (${t.org})`).join(', ')
+        const list = compact.map((t) => `${t.title} at ${t.org}`).join(', ')
         return {
           ok: true,
           summary: `Found ${matched.length} track${matched.length === 1 ? '' : 's'}${scope}: ${list}.`,
@@ -172,7 +172,7 @@ export default function TrackAssistantConnected({ className }: { className?: str
         const best = top[0]
         const alsoConsider = top
           .slice(1)
-          .map((r) => `${r.track.title} at ${r.track.org} (${r.overall}%)`)
+          .map((r) => `${r.track.title} at ${r.track.org} scoring ${r.overall}%`)
           .join(', ')
         const alsoText = alsoConsider ? ` Also consider ${alsoConsider}.` : ''
         const compact = top.map((r) => ({
@@ -184,7 +184,7 @@ export default function TrackAssistantConnected({ className }: { className?: str
 
         return {
           ok: true,
-          summary: `Top match: ${best.track.title} at ${best.track.org} (${best.overall}% fit) because ${best.rationale}${alsoText}`,
+          summary: `Top match: ${best.track.title} at ${best.track.org}, a ${best.overall}% fit, because ${best.rationale}${alsoText}`,
           data: compact,
         }
       },
@@ -219,7 +219,7 @@ export default function TrackAssistantConnected({ className }: { className?: str
           return {
             ok: false,
             summary:
-              "You'll need to finish your quick profile first (the onboarding quiz). Once that's done I can apply for you.",
+              "You'll need to finish your quick profile first, the onboarding quiz. Once that's done I can apply for you.",
           }
         }
 

@@ -62,8 +62,8 @@ export function Hero({
           >
             Most people choose a path under pressure, then discover it never fit.
             CapStoned lets you live inside real companies through milestone-driven
-            mentorship tracks (real projects, real mentors, continuous feedback),
-            so you decide with evidence rather than guesswork.
+            mentorship tracks with real projects, real mentors, and continuous
+            feedback, so you decide with evidence rather than guesswork.
           </p>
 
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
