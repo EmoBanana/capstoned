@@ -45,6 +45,18 @@ export const list = query({
 
 const skill = v.object({ name: v.string(), weight: v.number(), targetLevel: v.number() })
 const checkpoint = v.object({ label: v.string(), weight: v.number() })
+const deliverable = v.object({ title: v.string(), detail: v.string() })
+
+/** Evenly space deliverables across the duration into milestone objects. */
+function buildMilestones(deliverables: { title: string; detail: string }[], durationWeeks: number) {
+  const spacing = Math.max(1, Math.floor(durationWeeks / Math.max(deliverables.length, 1)))
+  return deliverables.map((d, i) => ({
+    id: `m${i + 1}`,
+    week: Math.min(durationWeeks, (i + 1) * spacing),
+    title: d.title.trim(),
+    detail: (d.detail || d.title).trim(),
+  }))
+}
 
 /** The signed-in recruiter publishes a real track under their own company. */
 export const create = mutation({
@@ -57,7 +69,7 @@ export const create = mutation({
     weeklyHours: v.number(),
     cap: v.number(),
     slaHours: v.number(),
-    deliverables: v.array(v.string()),
+    deliverables: v.array(deliverable),
     requiredSkills: v.array(skill),
     checkpoints: v.optional(v.array(checkpoint)),
   },
@@ -65,13 +77,9 @@ export const create = mutation({
     const org = await myOrg(ctx)
     if (!org) throw new ConvexError('Create your company profile first')
 
-    const spacing = Math.max(1, Math.floor(a.durationWeeks / Math.max(a.deliverables.length, 1)))
-    const milestones = a.deliverables.map((d, i) => ({
-      id: `m${i + 1}`,
-      week: Math.min(a.durationWeeks, (i + 1) * spacing),
-      title: d,
-      detail: d,
-    }))
+    const clean = a.deliverables.filter((d) => d.title.trim())
+    const titles = clean.map((d) => d.title.trim())
+    const milestones = buildMilestones(clean, a.durationWeeks)
 
     return await ctx.db.insert('tracks', {
       title: a.title,
@@ -79,8 +87,8 @@ export const create = mutation({
       orgSlug: org.slug,
       department: a.department,
       summary: a.summary,
-      objectives: a.deliverables,
-      deliverables: a.deliverables,
+      objectives: titles,
+      deliverables: titles,
       milestones,
       durationWeeks: a.durationWeeks,
       intensity: a.intensity,
@@ -168,7 +176,7 @@ export const update = mutation({
     durationWeeks: v.optional(v.number()),
     intensity: v.optional(INTENSITY),
     requiredSkills: v.optional(v.array(skill)),
-    deliverables: v.optional(v.array(v.string())),
+    deliverables: v.optional(v.array(deliverable)),
     checkpoints: v.optional(v.array(checkpoint)),
   },
   handler: async (ctx, a) => {
@@ -181,11 +189,9 @@ export const update = mutation({
     const durationWeeks = a.durationWeeks ?? track.durationWeeks
     // Editing the deliverables re-derives the milestone plan (the starter tasks
     // future mentees receive). Existing mentees keep the tasks they already have.
-    const deliverables = a.deliverables ? a.deliverables.map((d) => d.trim()).filter(Boolean) : null
-    const spacing = deliverables ? Math.max(1, Math.floor(durationWeeks / Math.max(deliverables.length, 1))) : 0
-    const milestones = deliverables
-      ? deliverables.map((d, i) => ({ id: `m${i + 1}`, week: Math.min(durationWeeks, (i + 1) * spacing), title: d, detail: d }))
-      : track.milestones
+    const clean = a.deliverables ? a.deliverables.filter((d) => d.title.trim()) : null
+    const titles = clean ? clean.map((d) => d.title.trim()) : null
+    const milestones = clean ? buildMilestones(clean, durationWeeks) : track.milestones
 
     await ctx.db.patch(a.trackId, {
       title: a.title ?? track.title,
@@ -199,8 +205,8 @@ export const update = mutation({
       requiredSkills: a.requiredSkills ?? track.requiredSkills,
       interestTags: a.requiredSkills ? a.requiredSkills.map((s) => s.name) : track.interestTags,
       domainTags: a.department ? [a.department.split('·')[0].trim()] : track.domainTags,
-      deliverables: deliverables ?? track.deliverables,
-      objectives: deliverables ?? track.objectives,
+      deliverables: titles ?? track.deliverables,
+      objectives: titles ?? track.objectives,
       milestones,
       scoringCheckpoints: a.checkpoints ?? track.scoringCheckpoints ?? [],
     })
@@ -220,5 +226,30 @@ export const close = mutation({
     if (!track) throw new ConvexError('Track not found')
     if (track.orgSlug !== org.slug) throw new ConvexError('That track belongs to another company')
     await ctx.db.patch(trackId, { status: 'closed' })
+  },
+})
+
+/** Full editable shape of one of the recruiter's own tracks, to prefill the
+ *  builder in edit mode. Returns null if it isn't theirs. */
+export const editable = query({
+  args: { trackId: v.id('tracks') },
+  handler: async (ctx, { trackId }) => {
+    const org = await myOrg(ctx)
+    const track = await ctx.db.get(trackId)
+    if (!track || !org || track.orgSlug !== org.slug) return null
+    return {
+      id: track._id as string,
+      title: track.title,
+      department: track.department,
+      summary: track.summary,
+      intensity: track.intensity,
+      durationWeeks: track.durationWeeks,
+      weeklyHours: track.weeklyHours,
+      cap: track.cap,
+      slaHours: track.slaHours,
+      skills: track.requiredSkills.map((s) => s.name),
+      deliverables: track.milestones.map((m) => ({ title: m.title, detail: m.detail })),
+      checkpoints: track.scoringCheckpoints ?? [],
+    }
   },
 })

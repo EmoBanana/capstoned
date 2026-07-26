@@ -3,8 +3,11 @@ import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 
 const { createSpy } = vi.hoisted(() => ({ createSpy: vi.fn() }))
+// organizations.mine resolves to the org; the editable query (edit mode) is
+// skipped in these create-mode tests, so return undefined for a 'skip' arg.
 vi.mock('convex/react', () => ({
-  useQuery: () => ({ id: 'o1', name: 'Talentbank', slug: 'talentbank', brandColor: 'D81439', reliability: 98, department: '', about: '' }),
+  useQuery: (_ref: unknown, args?: unknown) =>
+    args === 'skip' ? undefined : { id: 'o1', name: 'Talentbank', slug: 'talentbank', brandColor: 'D81439', reliability: 98, department: '', about: '' },
   useMutation: () => createSpy,
 }))
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }))

@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
+import type { Id } from '@/convex/_generated/dataModel'
 import { errorText } from '../components/errors'
 import { CompanyLogo } from '../components/CompanyLogo'
 import {
@@ -98,13 +99,16 @@ function IconArrow({ dir }: { dir: 'left' | 'right' }) {
 /*  Screen                                                             */
 /* ------------------------------------------------------------------ */
 
-export default function TrackBuilder() {
+export default function TrackBuilder({ editId = null }: { editId?: string | null }) {
   const [step, setStep] = useState<number>(1)
 
   const router = useRouter()
   const createTrack = useMutation(api.tracks.create)
+  const updateTrack = useMutation(api.tracks.update)
   const org = useQuery(api.organizations.mine)
   const companyName = org?.name ?? 'Your company'
+  const editData = useQuery(api.tracks.editable, editId ? { trackId: editId as Id<'tracks'> } : 'skip')
+  const isEdit = Boolean(editId)
 
   // Step 1 — Basics
   const [title, setTitle] = useState<string>('Frontend Platform Mentorship')
@@ -136,6 +140,28 @@ export default function TrackBuilder() {
   const [published, setPublished] = useState<boolean>(false)
   const [publishing, setPublishing] = useState<boolean>(false)
   const [publishError, setPublishError] = useState<string | null>(null)
+
+  // Edit mode: prefill every field from the saved track, once it loads.
+  const prefilled = useRef(false)
+  useEffect(() => {
+    if (!editData || prefilled.current) return
+    prefilled.current = true
+    setTitle(editData.title)
+    setDepartment(editData.department)
+    setDescription(editData.summary)
+    setSkillsText(editData.skills.join(', '))
+    setIntensity(editData.intensity === 'intense' ? 'Full-time' : 'Part-time')
+    setDurationWeeks(editData.durationWeeks)
+    setWeeklyHours(editData.weeklyHours)
+    setCap(editData.cap)
+    setSlaHours(editData.slaHours)
+    if (editData.deliverables.length) {
+      setDeliverables(editData.deliverables.map((d, i) => ({ id: i + 1, title: d.title, detail: d.detail })))
+    }
+    if (editData.checkpoints.length) {
+      setCheckpoints(editData.checkpoints.map((c, i) => ({ id: i + 1, label: c.label, weight: c.weight })))
+    }
+  }, [editData])
 
   /* --- dynamic row handlers --- */
   const addDeliverable = () =>
@@ -189,21 +215,28 @@ export default function TrackBuilder() {
         .map((s) => s.trim())
         .filter(Boolean)
         .map((name) => ({ name, weight: 1, targetLevel: 80 }))
-      await createTrack({
+      const payload = {
         title: title.trim(),
         department: department.trim(),
         summary: description.trim(),
-        intensity: intensity === 'Full-time' ? 'intense' : 'moderate',
+        intensity: (intensity === 'Full-time' ? 'intense' : 'moderate') as 'intense' | 'moderate',
         durationWeeks,
         weeklyHours,
         cap,
         slaHours,
-        deliverables: deliverables.map((d) => d.title.trim()).filter(Boolean),
+        deliverables: deliverables
+          .map((d) => ({ title: d.title.trim(), detail: d.detail.trim() }))
+          .filter((d) => d.title),
         requiredSkills,
         checkpoints: checkpoints
           .map((c) => ({ label: c.label.trim(), weight: Math.round(c.weight) || 0 }))
           .filter((c) => c.label),
-      })
+      }
+      if (isEdit && editId) {
+        await updateTrack({ trackId: editId as Id<'tracks'>, ...payload })
+      } else {
+        await createTrack(payload)
+      }
       setPublished(true)
       router.push('/recruiter/dashboard')
     } catch (e) {
@@ -221,13 +254,14 @@ export default function TrackBuilder() {
     <Page width="max-w-6xl">
       {/* ---------------- Header ---------------- */}
       <header className="mb-8 max-w-3xl">
-        <Eyebrow>Company · New Track</Eyebrow>
+        <Eyebrow>Company · {isEdit ? 'Edit Track' : 'New Track'}</Eyebrow>
         <h1 className="mt-3 text-3xl font-black tracking-tight text-ink sm:text-4xl">
-          Design Mentorship Track
+          {isEdit ? 'Edit Mentorship Track' : 'Design Mentorship Track'}
         </h1>
         <p className="mt-3 text-sm leading-relaxed text-ink-soft sm:text-base">
-          Define a milestone-driven track tailored to how your team actually works — deliverables,
-          weekly commitment, and the checkpoints your mentees are assessed against.
+          {isEdit
+            ? 'Update anything — basics, cadence, deliverables and their descriptions, and AI checkpoints. Mentees already enrolled keep their current plan and progress.'
+            : 'Define a milestone-driven track tailored to how your team actually works — deliverables, weekly commitment, and the checkpoints your mentees are assessed against.'}
         </p>
       </header>
 
@@ -607,10 +641,12 @@ export default function TrackBuilder() {
                   {published ? (
                     <>
                       <IconCheck />
-                      Track Published
+                      {isEdit ? 'Saved' : 'Track Published'}
                     </>
                   ) : publishing ? (
-                    'Publishing…'
+                    isEdit ? 'Saving…' : 'Publishing…'
+                  ) : isEdit ? (
+                    'Save changes'
                   ) : (
                     'Publish Track'
                   )}
