@@ -5,6 +5,7 @@ import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { Page, Eyebrow, Card, Button, Field, Input } from '../components/ui'
 import { errorText } from '../components/errors'
+import { SkeletonGrid } from '../components/Skeleton'
 
 /* ------------------------------------------------------------------ */
 /*  Candidate settings — edit the matchable profile after onboarding.   */
@@ -89,7 +90,7 @@ export default function StudentSettings() {
       </header>
 
       {me === undefined ? (
-        <Card className="px-6 py-16 text-center"><p className="text-sm font-semibold text-ink-soft">Loading…</p></Card>
+        <SkeletonGrid count={1} className="" />
       ) : (
         <Card className="p-6">
           <div className="grid grid-cols-1 gap-5">

@@ -1,23 +1,29 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useQuery } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
-import { Page, Card, Badge, Button, ProgressBar, Eyebrow, ReliabilityScore } from '../components/ui'
+import type { Id } from '@/convex/_generated/dataModel'
+import { Page, Card, Badge, Button, ProgressBar, Eyebrow, ReliabilityScore, Field, Input, Select, Textarea } from '../components/ui'
 import { SkeletonGrid } from '../components/Skeleton'
+import { useDialog } from '../components/useDialog'
+import { errorText } from '../components/errors'
 
 /* ------------------------------------------------------------------ */
 /*  Company home — real mentorship programs for the recruiter's org.    */
 /* ------------------------------------------------------------------ */
 
 type Status = 'draft' | 'open' | 'in-progress' | 'closed'
+type Intensity = 'light' | 'moderate' | 'intense'
 type Program = {
   id: string
   title: string
+  summary: string
   status: Status
-  intensity: 'light' | 'moderate' | 'intense'
+  intensity: Intensity
   durationWeeks: number
   weeklyHours: number
+  slaHours: number
   cap: number
   applicants: number
   enrolled: number
@@ -52,9 +58,20 @@ function Stat({ label, value, sub }: { label: string; value: string; sub?: strin
   )
 }
 
-function ProgramCard({ program, onNavigate }: { program: Program; onNavigate?: (id: string) => void }) {
+function ProgramCard({
+  program,
+  onNavigate,
+  onEdit,
+  onCloseTrack,
+}: {
+  program: Program
+  onNavigate?: (id: string) => void
+  onEdit: (p: Program) => void
+  onCloseTrack: (p: Program) => void
+}) {
   const meta = STATUS_META[program.status]
   const fillPct = program.cap ? Math.round((program.applicants / program.cap) * 100) : 0
+  const [confirmClose, setConfirmClose] = useState(false)
   return (
     <Card className="flex flex-col p-6">
       <div className="flex items-start justify-between gap-3">
@@ -82,21 +99,127 @@ function ProgramCard({ program, onNavigate }: { program: Program; onNavigate?: (
         <span><span className="font-bold text-ink">{program.applicants}</span> applied</span>
       </div>
 
-      <div className="mt-auto flex items-center gap-2 pt-6">
-        <Button variant="secondary" size="sm" className="flex-1" onClick={() => onNavigate?.('applicants')}>
-          Review applicants
-        </Button>
-        <Button variant="ghost" size="sm" onClick={() => onNavigate?.('mentees')}>
-          Mentees
-        </Button>
+      <div className="mt-auto flex flex-col gap-3 pt-6">
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" size="sm" className="flex-1" onClick={() => onNavigate?.('applicants')}>
+            Review applicants
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => onNavigate?.('mentees')}>
+            Mentees
+          </Button>
+        </div>
+        <div className="flex items-center gap-4 text-xs">
+          <button type="button" onClick={() => onEdit(program)} className="font-semibold text-ink-faint transition-colors hover:text-ink">
+            Edit
+          </button>
+          {program.status !== 'closed' &&
+            (confirmClose ? (
+              <>
+                <button type="button" onClick={() => onCloseTrack(program)} className="font-semibold text-danger">
+                  Confirm close
+                </button>
+                <button type="button" onClick={() => setConfirmClose(false)} className="text-ink-faint hover:text-ink">
+                  Cancel
+                </button>
+              </>
+            ) : (
+              <button type="button" onClick={() => setConfirmClose(true)} className="font-semibold text-ink-faint transition-colors hover:text-danger">
+                Close track
+              </button>
+            ))}
+        </div>
       </div>
     </Card>
   )
 }
 
+function TrackEditModal({
+  program,
+  onClose,
+}: {
+  program: Program
+  onClose: () => void
+}) {
+  const updateTrack = useMutation(api.tracks.update)
+  const dialogRef = useDialog<HTMLDivElement>(onClose)
+  const [title, setTitle] = useState(program.title)
+  const [summary, setSummary] = useState(program.summary)
+  const [cap, setCap] = useState(String(program.cap))
+  const [weeklyHours, setWeeklyHours] = useState(String(program.weeklyHours))
+  const [durationWeeks, setDurationWeeks] = useState(String(program.durationWeeks))
+  const [slaHours, setSlaHours] = useState(String(program.slaHours))
+  const [intensity, setIntensity] = useState<Intensity>(program.intensity)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const save = async () => {
+    setSaving(true)
+    setError(null)
+    try {
+      await updateTrack({
+        trackId: program.id as Id<'tracks'>,
+        title: title.trim(),
+        summary: summary.trim(),
+        cap: Math.max(1, Math.round(Number(cap) || program.cap)),
+        weeklyHours: Math.max(1, Math.round(Number(weeklyHours) || program.weeklyHours)),
+        durationWeeks: Math.max(1, Math.round(Number(durationWeeks) || program.durationWeeks)),
+        slaHours: Math.max(1, Math.round(Number(slaHours) || program.slaHours)),
+        intensity,
+      })
+      onClose()
+    } catch (e) {
+      setError(errorText(e))
+      setSaving(false)
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose}>
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Edit ${program.title}`}
+        tabIndex={-1}
+        className="max-h-[92vh] w-full max-w-lg overflow-y-auto border border-line-strong bg-cream rounded-t-[6px] focus:outline-none sm:rounded-[4px]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-b border-line px-6 py-4">
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-faint">Edit track</p>
+          <h3 className="text-base font-black tracking-tight text-ink">{program.title}</h3>
+        </div>
+        <div className="space-y-4 px-6 py-5">
+          <Field label="Title" required><Input value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
+          <Field label="Summary"><Textarea rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} /></Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Seat cap"><Input type="number" min={1} value={cap} onChange={(e) => setCap(e.target.value)} /></Field>
+            <Field label="Interview SLA (hrs)"><Input type="number" min={1} value={slaHours} onChange={(e) => setSlaHours(e.target.value)} /></Field>
+            <Field label="Duration (weeks)"><Input type="number" min={1} value={durationWeeks} onChange={(e) => setDurationWeeks(e.target.value)} /></Field>
+            <Field label="Weekly hours"><Input type="number" min={1} value={weeklyHours} onChange={(e) => setWeeklyHours(e.target.value)} /></Field>
+            <Field label="Intensity">
+              <Select value={intensity} onChange={(e) => setIntensity(e.target.value as Intensity)}>
+                <option value="light">Light</option>
+                <option value="moderate">Moderate</option>
+                <option value="intense">Intense</option>
+              </Select>
+            </Field>
+          </div>
+        </div>
+        <div className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
+          {error && <span className="mr-auto text-xs font-medium text-danger">{error}</span>}
+          <Button variant="ghost" onClick={onClose}>Cancel</Button>
+          <Button disabled={title.trim().length < 2 || saving} onClick={save}>{saving ? 'Saving…' : 'Save changes'}</Button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function RecruiterDashboard({ onNavigate }: { onNavigate?: (id: string) => void }) {
   const data = useQuery(api.tracks.forOrgManage)
+  const closeTrack = useMutation(api.tracks.close)
   const [filter, setFilter] = useState<Filter>('all')
+  const [editing, setEditing] = useState<Program | null>(null)
 
   const programs = useMemo<Program[]>(() => (data?.programs ?? []) as Program[], [data])
   const visible = filter === 'all' ? programs : programs.filter((p) => p.status === filter)
@@ -165,10 +288,18 @@ export default function RecruiterDashboard({ onNavigate }: { onNavigate?: (id: s
       ) : (
         <div className="grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-2">
           {visible.map((p) => (
-            <ProgramCard key={p.id} program={p} onNavigate={onNavigate} />
+            <ProgramCard
+              key={p.id}
+              program={p}
+              onNavigate={onNavigate}
+              onEdit={setEditing}
+              onCloseTrack={(prog) => void closeTrack({ trackId: prog.id as Id<'tracks'> })}
+            />
           ))}
         </div>
       )}
+
+      {editing && <TrackEditModal program={editing} onClose={() => setEditing(null)} />}
     </Page>
   )
 }

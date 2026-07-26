@@ -119,10 +119,12 @@ export const forOrgManage = query({
         return {
           id: t._id as string,
           title: t.title,
+          summary: t.summary,
           status: t.status,
           intensity: t.intensity,
           durationWeeks: t.durationWeeks,
           weeklyHours: t.weeklyHours,
+          slaHours: t.slaHours,
           cap: t.cap,
           applicants: t.applicants + apps.length,
           enrolled: enrollments.length,
@@ -135,5 +137,54 @@ export const forOrgManage = query({
       org: { name: org.name, slug: org.slug, reliability: org.reliability },
       programs,
     }
+  },
+})
+
+const INTENSITY = v.union(v.literal('light'), v.literal('moderate'), v.literal('intense'))
+
+/** Recruiter edits one of their own published tracks. */
+export const update = mutation({
+  args: {
+    trackId: v.id('tracks'),
+    title: v.optional(v.string()),
+    summary: v.optional(v.string()),
+    cap: v.optional(v.number()),
+    slaHours: v.optional(v.number()),
+    weeklyHours: v.optional(v.number()),
+    durationWeeks: v.optional(v.number()),
+    intensity: v.optional(INTENSITY),
+    requiredSkills: v.optional(v.array(skill)),
+  },
+  handler: async (ctx, a) => {
+    const org = await myOrg(ctx)
+    if (!org) throw new ConvexError('Create your company profile first')
+    const track = await ctx.db.get(a.trackId)
+    if (!track) throw new ConvexError('Track not found')
+    if (track.orgSlug !== org.slug) throw new ConvexError('That track belongs to another company')
+
+    await ctx.db.patch(a.trackId, {
+      title: a.title ?? track.title,
+      summary: a.summary ?? track.summary,
+      cap: a.cap ?? track.cap,
+      slaHours: a.slaHours ?? track.slaHours,
+      weeklyHours: a.weeklyHours ?? track.weeklyHours,
+      durationWeeks: a.durationWeeks ?? track.durationWeeks,
+      intensity: a.intensity ?? track.intensity,
+      requiredSkills: a.requiredSkills ?? track.requiredSkills,
+      interestTags: a.requiredSkills ? a.requiredSkills.map((s) => s.name) : track.interestTags,
+    })
+  },
+})
+
+/** Recruiter closes one of their own tracks — it leaves the marketplace. */
+export const close = mutation({
+  args: { trackId: v.id('tracks') },
+  handler: async (ctx, { trackId }) => {
+    const org = await myOrg(ctx)
+    if (!org) throw new ConvexError('Create your company profile first')
+    const track = await ctx.db.get(trackId)
+    if (!track) throw new ConvexError('Track not found')
+    if (track.orgSlug !== org.slug) throw new ConvexError('That track belongs to another company')
+    await ctx.db.patch(trackId, { status: 'closed' })
   },
 })

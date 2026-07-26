@@ -6,6 +6,7 @@ import { api } from '@/convex/_generated/api'
 import { toCandidateProfile, toTrack } from '@/src/lib/convex-adapters'
 import MatchReport from '@/src/components/match/MatchReport'
 import { Page, Card, Eyebrow } from '../components/ui'
+import { SkeletonGrid } from '../components/Skeleton'
 
 /* ------------------------------------------------------------------ */
 /*  Recruiter · AI Assessment — pick a mentee, see the real weighted    */
@@ -24,9 +25,7 @@ export default function RecruiterAssessment() {
   if (data === undefined) {
     return (
       <Page>
-        <Card className="px-6 py-16 text-center">
-          <p className="text-sm font-semibold text-ink-soft">Loading assessments…</p>
-        </Card>
+        <SkeletonGrid count={3} />
       </Page>
     )
   }

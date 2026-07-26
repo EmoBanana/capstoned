@@ -60,6 +60,7 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
   const sponsorship = useQuery(api.sponsorships.forEnrollment, { enrollmentId: mentee.enrollmentId as Id<'enrollments'> })
   const offer = useMutation(api.sponsorships.offer)
   const addFeedback = useMutation(api.enrollments.addFeedback)
+  const setStanding = useMutation(api.enrollments.setStatus)
   const reviewTask = useMutation(api.tasks.review)
   const addTask = useMutation(api.tasks.add)
   const advanceWeek = useMutation(api.enrollments.advanceWeek)
@@ -114,7 +115,16 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
             <div className="flex flex-wrap items-center gap-2">
               <h3 className="text-xl font-bold tracking-tight text-ink">{mentee.name}</h3>
               <span className={`h-2 w-2 rounded-full ${meta.dot}`} aria-hidden="true" />
-              <Badge tone={meta.tone}>{meta.label}</Badge>
+              <select
+                value={mentee.status}
+                onChange={(e) => void setStanding({ enrollmentId, status: e.target.value as MenteeStatus })}
+                aria-label={`Set ${mentee.name}'s standing`}
+                className="border border-line-strong bg-cream px-2 py-1 text-xs font-semibold text-ink rounded-[2px] focus:border-ink focus:outline-none"
+              >
+                {(Object.keys(STATUS_META) as MenteeStatus[]).map((s) => (
+                  <option key={s} value={s}>{STATUS_META[s].label}</option>
+                ))}
+              </select>
             </div>
             <p className="mt-1 text-sm text-ink-soft">{mentee.program} · {mentee.university}</p>
             <div className="mt-3"><ReliabilityScore value={mentee.reliability} /></div>

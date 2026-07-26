@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
 
 const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
-vi.mock('convex/react', () => ({ useQuery: (...a: unknown[]) => useQueryMock(...a) }))
+vi.mock('convex/react', () => ({ useQuery: (...a: unknown[]) => useQueryMock(...a), useMutation: () => vi.fn() }))
 
 import RecruiterDashboard from '@/src/screens/RecruiterDashboard'
 
