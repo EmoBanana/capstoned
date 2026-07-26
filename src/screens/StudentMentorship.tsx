@@ -6,6 +6,8 @@ import { api } from '@/convex/_generated/api'
 import type { Id } from '@/convex/_generated/dataModel'
 import { Page, Card, Badge, Button, ProgressBar, Eyebrow } from '../components/ui'
 import MicroBondContract from '../components/MicroBondContract'
+import { CompanyLogo } from '../components/CompanyLogo'
+import { ChatThread, MeetingScheduler } from '../components/MentorshipComms'
 import { errorText } from '../components/errors'
 
 /* ------------------------------------------------------------------ */
@@ -69,10 +71,15 @@ export default function StudentMentorship({ onNavigate }: { onNavigate?: (id: st
   const sponsorship = useQuery(api.sponsorships.mine)
   const signContract = useMutation(api.sponsorships.sign)
   const declineContract = useMutation(api.sponsorships.decline)
+  const completeMentorship = useMutation(api.enrollments.complete)
+  const withdrawMentorship = useMutation(api.enrollments.withdraw)
   const [banner, setBanner] = useState<string | null>(null)
   const [showContract, setShowContract] = useState(false)
   const [signing, setSigning] = useState(false)
   const [signError, setSignError] = useState<string | null>(null)
+  const [pendingAction, setPendingAction] = useState<'complete' | 'withdraw' | null>(null)
+  const [acting, setActing] = useState(false)
+  const [actionError, setActionError] = useState<string | null>(null)
 
   if (data === undefined) {
     return (
@@ -105,23 +112,65 @@ export default function StudentMentorship({ onNavigate }: { onNavigate?: (id: st
     setBanner(`“${title}” sent to ${data.mentorName} for review.`)
   }
 
+  const runAction = async () => {
+    if (!pendingAction) return
+    setActing(true)
+    setActionError(null)
+    try {
+      const enrollmentId = data.enrollmentId as Id<'enrollments'>
+      if (pendingAction === 'complete') await completeMentorship({ enrollmentId })
+      else await withdrawMentorship({ enrollmentId })
+      setPendingAction(null)
+    } catch (e) {
+      setActionError(errorText(e))
+    } finally {
+      setActing(false)
+    }
+  }
+
   return (
     <Page>
       <header className="flex flex-col gap-5 border-b border-line pb-7 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <Eyebrow>Candidate · My Mentorship</Eyebrow>
-          <h1 className="mt-2 text-3xl font-black tracking-tight text-ink sm:text-4xl">{data.trackTitle}</h1>
-          <p className="mt-2 text-sm text-ink-soft">
-            {data.org} · Mentor: <span className="font-semibold text-ink">{data.mentorName}</span>
-          </p>
+        <div className="flex items-start gap-4">
+          <CompanyLogo slug={data.orgSlug} name={data.org} logoUrl={data.logoUrl} className="h-12 w-12" />
+          <div className="min-w-0">
+            <Eyebrow>Candidate · My Mentorship</Eyebrow>
+            <h1 className="mt-2 text-3xl font-black tracking-tight text-ink sm:text-4xl">{data.trackTitle}</h1>
+            <p className="mt-2 text-sm text-ink-soft">
+              {data.org} · Mentor: <span className="font-semibold text-ink">{data.mentorName}</span>
+            </p>
+          </div>
         </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Badge tone="gold">Week {data.weekProgress} of {data.totalWeeks}</Badge>
-          <Badge tone={data.status === 'at-risk' ? 'danger' : data.status === 'needs-support' ? 'gold' : 'success'}>
-            {data.status.replace('-', ' ')}
-          </Badge>
+        <div className="flex flex-col items-start gap-3 sm:items-end">
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge tone="gold">Week {data.weekProgress} of {data.totalWeeks}</Badge>
+            <Badge tone={data.status === 'at-risk' ? 'danger' : data.status === 'needs-support' ? 'gold' : 'success'}>
+              {data.status.replace('-', ' ')}
+            </Badge>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="secondary" onClick={() => { setActionError(null); setPendingAction('complete') }}>Mark complete</Button>
+            <Button size="sm" variant="ghost" onClick={() => { setActionError(null); setPendingAction('withdraw') }}>Leave mentorship</Button>
+          </div>
         </div>
       </header>
+
+      {pendingAction && (
+        <div className={`mt-5 rounded-[2px] border px-4 py-3 ${pendingAction === 'withdraw' ? 'border-danger/40 bg-danger-soft/40' : 'border-gold/40 bg-gold-soft/40'}`}>
+          <p className="text-sm text-ink">
+            {pendingAction === 'complete'
+              ? 'Mark this mentorship complete? It frees you to apply to another track, and completing counts toward your reliability.'
+              : 'Leave this mentorship? You can then apply elsewhere, but leaving early is a small reliability signal.'}
+          </p>
+          {actionError && <p className="mt-2 text-xs font-medium text-danger-ink">{actionError}</p>}
+          <div className="mt-3 flex items-center justify-end gap-2">
+            <Button size="sm" variant="ghost" disabled={acting} onClick={() => setPendingAction(null)}>Cancel</Button>
+            <Button size="sm" disabled={acting} onClick={() => void runAction()}>
+              {pendingAction === 'complete' ? 'Mark complete' : 'Leave mentorship'}
+            </Button>
+          </div>
+        </div>
+      )}
 
       <Card className="mt-7">
         <div className="grid grid-cols-1 divide-y divide-line sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-4">
@@ -302,6 +351,23 @@ export default function StudentMentorship({ onNavigate }: { onNavigate?: (id: st
           </div>
         </aside>
       </div>
+
+      <section className="mt-8 grid grid-cols-1 gap-7 lg:grid-cols-2">
+        <div>
+          <div className="mb-3">
+            <Eyebrow>Direct line</Eyebrow>
+            <h2 className="mt-1 text-lg font-bold tracking-tight text-ink">Chat with {data.mentorName}</h2>
+          </div>
+          <ChatThread enrollmentId={data.enrollmentId} counterpartLabel={data.mentorName} />
+        </div>
+        <div>
+          <div className="mb-3">
+            <Eyebrow>Meetings</Eyebrow>
+            <h2 className="mt-1 text-lg font-bold tracking-tight text-ink">Schedule a meeting</h2>
+          </div>
+          <MeetingScheduler enrollmentId={data.enrollmentId} counterpartLabel={data.mentorName} />
+        </div>
+      </section>
     </Page>
   )
 }

@@ -95,12 +95,14 @@ function TrackCard({
   track,
   fit,
   applied,
+  locked,
   onApply,
   onView,
 }: {
   track: TrackRow
   fit: number | null
   applied: boolean
+  locked: boolean
   onApply: () => void
   onView: () => void
 }) {
@@ -146,6 +148,10 @@ function TrackCard({
         </div>
         {applied ? (
           <span className="shrink-0 text-xs font-semibold text-success-ink">✓ Applied</span>
+        ) : locked ? (
+          <Button variant="secondary" size="sm" disabled aria-label="Finish your current mentorship to apply">
+            In a mentorship
+          </Button>
         ) : full ? (
           <Button variant="secondary" size="sm" disabled>
             Waitlist
@@ -260,12 +266,14 @@ function TrackDetailModal({
   track,
   match,
   applied,
+  locked,
   onApply,
   onClose,
 }: {
   track: TrackRow
   match: Match | null
   applied: boolean
+  locked: boolean
   onApply: () => void
   onClose: () => void
 }) {
@@ -351,6 +359,8 @@ function TrackDetailModal({
           <span className="text-xs text-ink-faint">{full ? 'Waitlist only' : `${Math.max(0, track.cap - track.applicants)} of ${track.cap} seats open`}</span>
           {applied ? (
             <span className="text-xs font-semibold text-success-ink">✓ Applied</span>
+          ) : locked ? (
+            <Button variant="secondary" disabled>Finish your mentorship to apply</Button>
           ) : full ? (
             <Button variant="secondary" disabled>Waitlist</Button>
           ) : (
@@ -374,8 +384,12 @@ export default function Marketplace() {
   const trackData = useQuery(api.tracks.list)
   const candidate = useQuery(api.candidates.current)
   const myTrackIds = useQuery(api.applications.myTrackIds)
+  const activeMentorship = useQuery(api.enrollments.myMentorship)
   const apply = useMutation(api.applications.apply)
   const appliedSet = useMemo(() => new Set(myTrackIds ?? []), [myTrackIds])
+  // One mentorship at a time: while in an active mentorship, applying is locked
+  // until the candidate completes or leaves it.
+  const gated = !!activeMentorship
   const loading = trackData === undefined || candidate === undefined
 
   const tracks = useMemo<TrackRow[]>(() => (trackData ?? []) as TrackRow[], [trackData])
@@ -435,6 +449,15 @@ export default function Marketplace() {
           work style. Every track shows live seats and a guaranteed interview window.
         </p>
       </header>
+
+      {gated && (
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-[2px] border border-gold/40 bg-gold-soft/40 px-4 py-3">
+          <p className="text-sm text-ink">
+            You are currently in <span className="font-bold">{activeMentorship?.trackTitle}</span> at{' '}
+            <span className="font-bold">{activeMentorship?.org}</span>. Finish or leave it in My Mentorship before applying to another track.
+          </p>
+        </div>
+      )}
 
       <div className="mb-8 flex flex-wrap gap-x-10 gap-y-4 border-b border-line pb-6">
         {[
@@ -543,6 +566,7 @@ export default function Marketplace() {
               track={track}
               fit={fitById.get(track.id) ?? null}
               applied={appliedSet.has(track.id)}
+              locked={gated}
               onApply={() => { setApplyError(null); setApplyTrack(track) }}
               onView={() => setDetailTrack(track)}
             />
@@ -554,6 +578,7 @@ export default function Marketplace() {
         <TrackDetailModal
           track={detailTrack}
           applied={appliedSet.has(detailTrack.id)}
+          locked={gated}
           match={
             candidate
               ? computeMatch(candidate as unknown as CandidateProfile, detailTrack as unknown as DomainTrack)

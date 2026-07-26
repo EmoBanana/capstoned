@@ -7,6 +7,7 @@ import type { Doc } from './_generated/dataModel'
 import { recordEvent, reliabilityDisplay } from './reliability'
 import { notify } from './notifications'
 import { myOrg } from './organizations'
+import { activeEnrollmentFor } from './enrollments'
 
 const STATUS = v.union(v.literal('pending'), v.literal('accepted'), v.literal('declined'))
 
@@ -67,6 +68,12 @@ export const apply = mutation({
     const candidate = await myCandidate(ctx)
     if (!candidate) throw new ConvexError('Complete your profile before applying')
     if (!candidate.profileComplete) throw new ConvexError('Finish onboarding before applying')
+    // One mentorship at a time: a candidate already in an active mentorship must
+    // complete or leave it before applying elsewhere.
+    const active = await activeEnrollmentFor(ctx, candidate._id)
+    if (active) {
+      throw new ConvexError('You are already in an active mentorship. Complete or leave it before applying to another track.')
+    }
     const track = await ctx.db.get(trackId)
     if (!track) throw new ConvexError('Track not found')
 
@@ -291,6 +298,12 @@ export const enroll = mutation({
       .withIndex('by_track', (q) => q.eq('trackId', track._id))
       .collect()
     if (trackEnrollments.some((e) => e.candidateId === app.candidateId)) return
+    // A candidate can hold only one active mentorship. If they're active on
+    // another track, they must complete or leave it before being enrolled here.
+    const activeElsewhere = await activeEnrollmentFor(ctx, app.candidateId)
+    if (activeElsewhere) {
+      throw new ConvexError('This candidate is already in an active mentorship. They must complete or leave it before enrolling here.')
+    }
     if (trackEnrollments.length >= track.cap) {
       throw new ConvexError(`This track is at its seat cap of ${track.cap}. Close or expand it before enrolling more.`)
     }
@@ -312,6 +325,21 @@ export const enroll = mutation({
 
     const candidate = await ctx.db.get(app.candidateId)
     await notify(ctx, candidate?.userId, 'enrolled', `You're enrolled in ${track.title} at ${track.org} — your mentorship has started.`, '/student/mentorship')
+
+    // One mentorship at a time: enrolling here closes out the candidate's other
+    // live applications/interviews. Each affected company is notified.
+    const others = (
+      await ctx.db
+        .query('applications')
+        .withIndex('by_candidate', (q) => q.eq('candidateId', app.candidateId))
+        .collect()
+    ).filter((a) => a._id !== app._id && a.status !== 'declined')
+    for (const other of others) {
+      await ctx.db.patch(other._id, { status: 'declined' })
+      const otherTrack = await ctx.db.get(other.trackId)
+      const otherOrg = otherTrack ? await orgForTrack(ctx, otherTrack) : null
+      await notify(ctx, otherOrg?.ownerUserId, 'application', `${candidate?.name ?? 'A candidate'} is no longer available for ${otherTrack?.title ?? 'your track'} — they accepted another mentorship.`, '/recruiter/applicants')
+    }
   },
 })
 

@@ -145,6 +145,13 @@ export default defineSchema({
     feedback: v.array(
       v.object({ author: v.string(), role: v.string(), when: v.string(), body: v.string() }),
     ),
+    // Lifecycle of the mentorship. Absent is treated as 'active' for rows seeded
+    // before this field existed. A candidate may hold only one active enrollment
+    // at a time; completing or withdrawing frees them to apply elsewhere.
+    phase: v.optional(
+      v.union(v.literal('active'), v.literal('completed'), v.literal('withdrawn')),
+    ),
+    endedAt: v.optional(v.number()),
   })
     .index('by_track', ['trackId'])
     .index('by_candidate', ['candidateId']),
@@ -208,4 +215,26 @@ export default defineSchema({
     read: v.boolean(),
     createdAt: v.number(),
   }).index('by_user', ['userId']),
+
+  // Direct chat thread between a company mentor and a mentee, scoped to their
+  // enrollment. Either party sends; the other is notified.
+  messages: defineTable({
+    enrollmentId: v.id('enrollments'),
+    senderUserId: v.id('users'),
+    senderRole: v.union(v.literal('mentor'), v.literal('mentee')),
+    senderName: v.string(),
+    body: v.string(),
+    createdAt: v.number(),
+  }).index('by_enrollment', ['enrollmentId']),
+
+  // A scheduled meeting between mentor and mentee. One party proposes a time,
+  // the other confirms — mirroring the interview propose/confirm handshake.
+  meetings: defineTable({
+    enrollmentId: v.id('enrollments'),
+    at: v.number(),
+    note: v.optional(v.string()),
+    proposedByRole: v.union(v.literal('mentor'), v.literal('mentee')),
+    status: v.union(v.literal('proposed'), v.literal('confirmed'), v.literal('cancelled')),
+    createdAt: v.number(),
+  }).index('by_enrollment', ['enrollmentId']),
 })

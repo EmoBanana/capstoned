@@ -14,6 +14,8 @@ import type * as candidates from "../candidates.js";
 import type * as enrollments from "../enrollments.js";
 import type * as health from "../health.js";
 import type * as http from "../http.js";
+import type * as meetings from "../meetings.js";
+import type * as messages from "../messages.js";
 import type * as notifications from "../notifications.js";
 import type * as organizations from "../organizations.js";
 import type * as reliability from "../reliability.js";
@@ -37,6 +39,8 @@ declare const fullApi: ApiFromModules<{
   enrollments: typeof enrollments;
   health: typeof health;
   http: typeof http;
+  meetings: typeof meetings;
+  messages: typeof messages;
   notifications: typeof notifications;
   organizations: typeof organizations;
   reliability: typeof reliability;

@@ -6,6 +6,7 @@ import { api } from '@/convex/_generated/api'
 import type { Id } from '@/convex/_generated/dataModel'
 import { Page, Card, Badge, Button, ProgressBar, Eyebrow, ReliabilityScore, Field, Input, Select, Textarea } from '../components/ui'
 import MicroBondContract from '../components/MicroBondContract'
+import { ChatThread, MeetingScheduler } from '../components/MentorshipComms'
 
 /* ------------------------------------------------------------------ */
 /*  Recruiter · Mentees — live Convex enrollments, master-detail with   */
@@ -24,6 +25,7 @@ type MenteeData = {
   reliability: number
   reliabilityDisplay: number | null
   status: string
+  phase: string
   weekProgress: number
   totalWeeks: number
   fit: number
@@ -129,6 +131,8 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
   const addTask = useMutation(api.tasks.add)
   const advanceWeek = useMutation(api.enrollments.advanceWeek)
   const logHours = useMutation(api.enrollments.logHours)
+  const completeMentorship = useMutation(api.enrollments.complete)
+  const [comms, setComms] = useState<'none' | 'chat' | 'meeting'>('none')
   const [feedbackOpen, setFeedbackOpen] = useState(false)
   const [feedbackText, setFeedbackText] = useState('')
   const [sent, setSent] = useState(false)
@@ -195,12 +199,30 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
+          {mentee.phase !== 'active' && (
+            <Badge tone={mentee.phase === 'completed' ? 'success' : 'slate'}>{mentee.phase === 'completed' ? 'Completed' : 'Left'}</Badge>
+          )}
+          <Button size="sm" variant={comms === 'chat' ? 'primary' : 'secondary'} onClick={() => setComms((c) => (c === 'chat' ? 'none' : 'chat'))} aria-label={`Chat with ${mentee.name}`}>Chat</Button>
+          <Button size="sm" variant={comms === 'meeting' ? 'primary' : 'secondary'} onClick={() => setComms((c) => (c === 'meeting' ? 'none' : 'meeting'))} aria-label={`Schedule a meeting with ${mentee.name}`}>Schedule meeting</Button>
           <Button size="sm" variant="secondary" onClick={() => { setFeedbackOpen((v) => !v); setSent(false) }} aria-label={`Send feedback to ${mentee.name}`}>Send feedback</Button>
           {!sponsorship && (
             <Button size="sm" onClick={() => setModalOpen(true)} aria-label={`Offer micro-bond to ${mentee.name}`}>Offer micro-bond</Button>
           )}
+          {mentee.phase === 'active' && (
+            <Button size="sm" variant="ghost" onClick={() => void completeMentorship({ enrollmentId })} aria-label={`Mark ${mentee.name}'s mentorship complete`}>Mark complete</Button>
+          )}
         </div>
       </div>
+
+      {comms !== 'none' && (
+        <div className="mt-6">
+          {comms === 'chat' ? (
+            <ChatThread enrollmentId={mentee.enrollmentId} counterpartLabel={firstName} />
+          ) : (
+            <MeetingScheduler enrollmentId={mentee.enrollmentId} counterpartLabel={firstName} />
+          )}
+        </div>
+      )}
 
       {feedbackOpen && (
         <div className="mt-6 rounded-[2px] border border-line bg-paper p-4">

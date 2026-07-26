@@ -2,10 +2,11 @@ import { ConvexError } from 'convex/values'
 import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
-import type { QueryCtx } from './_generated/server'
-import type { Id } from './_generated/dataModel'
-import { clampScore, deltaSum, reliabilityDisplay } from './reliability'
+import type { QueryCtx, MutationCtx } from './_generated/server'
+import type { Doc, Id } from './_generated/dataModel'
+import { clampScore, deltaSum, reliabilityDisplay, recordEvent } from './reliability'
 import { notify } from './notifications'
+import { myOrg } from './organizations'
 
 /** The signed-in user's own candidate profile, or null. No demo fallback. */
 async function resolveCandidate(ctx: QueryCtx) {
@@ -15,6 +16,51 @@ async function resolveCandidate(ctx: QueryCtx) {
     .query('candidates')
     .withIndex('by_user', (q) => q.eq('userId', userId))
     .first()
+}
+
+/** The organization (and its owner) running an enrollment's track. */
+async function orgForEnrollment(ctx: QueryCtx | MutationCtx, enrollment: Doc<'enrollments'>) {
+  const track = await ctx.db.get(enrollment.trackId)
+  const org = track
+    ? await ctx.db.query('organizations').withIndex('by_slug', (q) => q.eq('slug', track.orgSlug)).first()
+    : null
+  return { track, org }
+}
+
+/**
+ * Which party the signed-in user is for an enrollment — the company mentor
+ * (the org owner) or the enrolled candidate. Gates chat, meetings, and
+ * lifecycle actions so neither side can act on someone else's mentorship.
+ */
+export async function enrollmentParty(ctx: QueryCtx | MutationCtx, enrollmentId: Id<'enrollments'>) {
+  const enrollment = await ctx.db.get(enrollmentId)
+  if (!enrollment) return { enrollment: null, org: null, candidate: null, party: null as 'mentor' | 'mentee' | null }
+  const { org } = await orgForEnrollment(ctx, enrollment)
+  const candidate = await ctx.db.get(enrollment.candidateId)
+  const userId = await getAuthUserId(ctx)
+  let party: 'mentor' | 'mentee' | null = null
+  if (userId) {
+    // A mentor is any recruiter who represents the enrollment's org — resolved
+    // via membership (many mentors per company) or legacy sole ownership.
+    const callerOrg = await myOrg(ctx)
+    if (org && callerOrg && callerOrg._id === org._id) party = 'mentor'
+    else if (candidate?.userId && candidate.userId === userId) party = 'mentee'
+  }
+  return { enrollment, org, candidate, party }
+}
+
+/** A candidate's current active mentorship (phase 'active' or unset), if any.
+ *  Absent phase counts as active so rows seeded before the field still gate. */
+export async function activeEnrollmentFor(ctx: QueryCtx | MutationCtx, candidateId: Id<'candidates'>) {
+  const rows = await ctx.db
+    .query('enrollments')
+    .withIndex('by_candidate', (q) => q.eq('candidateId', candidateId))
+    .collect()
+  return (
+    rows
+      .filter((e) => (e.phase ?? 'active') === 'active')
+      .sort((a, b) => b._creationTime - a._creationTime)[0] ?? null
+  )
 }
 
 async function tasksFor(ctx: QueryCtx, enrollmentId: Id<'enrollments'>) {
@@ -52,6 +98,7 @@ export const menteesForOrg = query({
           reliability: clampScore(c?.reliabilityScore ?? 100, await deltaSum(ctx, 'candidate', e.candidateId)),
           reliabilityDisplay: await reliabilityDisplay(ctx, 'candidate', e.candidateId, c?.reliabilityScore ?? 100, false),
           status: e.status,
+          phase: e.phase ?? 'active',
           weekProgress: e.weekProgress,
           totalWeeks: e.totalWeeks,
           fit: e.fit,
@@ -87,23 +134,30 @@ export const assessmentData = query({
   },
 })
 
-/** The signed-in student's own mentorship (progress, tasks, mentor feedback). */
+/**
+ * The signed-in student's own ACTIVE mentorship (progress, tasks, mentor
+ * feedback). A candidate can hold only one active enrollment, so this returns
+ * that one — the most recent active row — rather than whichever happened to be
+ * created first. Org identity (name, slug, logo) comes from the organization
+ * record so the page shows the real company, not a stale seeded one.
+ */
 export const myMentorship = query({
   args: {},
   handler: async (ctx) => {
     const candidate = await resolveCandidate(ctx)
     if (!candidate) return null
-    const enrollment = (
-      await ctx.db
-        .query('enrollments')
-        .withIndex('by_candidate', (q) => q.eq('candidateId', candidate._id))
-        .collect()
-    )[0]
+    const enrollment = await activeEnrollmentFor(ctx, candidate._id)
     if (!enrollment) return null
     const track = await ctx.db.get(enrollment.trackId)
+    const { org } = await orgForEnrollment(ctx, enrollment)
+    const logoUrl = org?.logoStorageId ? await ctx.storage.getUrl(org.logoStorageId) : null
     return {
+      enrollmentId: enrollment._id as string,
+      trackId: enrollment.trackId as string,
       trackTitle: track?.title ?? '',
-      org: track?.org ?? '',
+      org: org?.name ?? track?.org ?? '',
+      orgSlug: org?.slug ?? track?.orgSlug ?? '',
+      logoUrl,
       mentorName: enrollment.mentorName,
       weekProgress: enrollment.weekProgress,
       totalWeeks: enrollment.totalWeeks,
@@ -112,6 +166,42 @@ export const myMentorship = query({
       status: enrollment.status,
       feedback: enrollment.feedback,
       tasks: await tasksFor(ctx, enrollment._id),
+    }
+  },
+})
+
+/** Candidate ends their own active mentorship early. Frees them to apply
+ *  elsewhere; withdrawing before completion is a modest reliability signal. */
+export const withdraw = mutation({
+  args: { enrollmentId: v.id('enrollments') },
+  handler: async (ctx, { enrollmentId }) => {
+    const { enrollment, org, candidate, party } = await enrollmentParty(ctx, enrollmentId)
+    if (!enrollment) throw new ConvexError('Enrollment not found')
+    if (party !== 'mentee') throw new ConvexError('Only the mentee can leave their own mentorship')
+    if ((enrollment.phase ?? 'active') !== 'active') return
+    await ctx.db.patch(enrollmentId, { phase: 'withdrawn', endedAt: Date.now() })
+    await recordEvent(ctx, 'candidate', enrollment.candidateId, -6, 'Withdrew from a mentorship early')
+    const track = await ctx.db.get(enrollment.trackId)
+    await notify(ctx, org?.ownerUserId, 'mentorship', `${candidate?.name ?? 'A mentee'} left ${track?.title ?? 'their mentorship'}.`, '/recruiter/mentees')
+  },
+})
+
+/** Marks a mentorship complete. Either party may close it out; completing is a
+ *  strong positive reliability signal for the candidate. */
+export const complete = mutation({
+  args: { enrollmentId: v.id('enrollments') },
+  handler: async (ctx, { enrollmentId }) => {
+    const { enrollment, org, candidate, party } = await enrollmentParty(ctx, enrollmentId)
+    if (!enrollment) throw new ConvexError('Enrollment not found')
+    if (!party) throw new ConvexError('Not allowed')
+    if ((enrollment.phase ?? 'active') !== 'active') return
+    await ctx.db.patch(enrollmentId, { phase: 'completed', endedAt: Date.now() })
+    await recordEvent(ctx, 'candidate', enrollment.candidateId, 10, 'Completed a mentorship')
+    const track = await ctx.db.get(enrollment.trackId)
+    if (party === 'mentor') {
+      await notify(ctx, candidate?.userId, 'mentorship', `Your mentorship on ${track?.title ?? 'your track'} was marked complete. Well done.`, '/student/mentorship')
+    } else {
+      await notify(ctx, org?.ownerUserId, 'mentorship', `${candidate?.name ?? 'A mentee'} marked ${track?.title ?? 'their mentorship'} complete.`, '/recruiter/mentees')
     }
   },
 })

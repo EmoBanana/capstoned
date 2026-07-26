@@ -53,6 +53,7 @@ export default function MatchExplorer() {
   const candidateDoc = useQuery(api.candidates.current)
   const trackDocs = useQuery(api.tracks.list)
   const myTrackIds = useQuery(api.applications.myTrackIds)
+  const mentorship = useQuery(api.enrollments.myMentorship)
   const apply = useMutation(api.applications.apply)
 
   const [selectedId, setSelectedId] = useState<Id<'tracks'> | null>(null)
@@ -65,10 +66,15 @@ export default function MatchExplorer() {
     [candidateDoc],
   )
 
-  // Map + score every track, then rank DESC by overall match.
+  // The candidate's current mentorship track, if any — it anchors the report.
+  const mentorshipTrackId = mentorship?.trackId ?? null
+
+  // Map + score every track, then rank DESC by overall match. When the
+  // candidate is in a mentorship, that track is pinned to the top — the
+  // assessment prioritises the company they're actually mentoring with.
   const ranked = useMemo<Ranked[]>(() => {
     if (!candidate || !trackDocs) return []
-    return trackDocs
+    const scored = trackDocs
       .map((doc) => {
         const track = toTrack(doc)
         return {
@@ -78,13 +84,20 @@ export default function MatchExplorer() {
         }
       })
       .sort((a, b) => b.overall - a.overall)
-  }, [candidate, trackDocs])
+    if (!mentorshipTrackId) return scored
+    const pinned = scored.filter((r) => (r.id as string) === mentorshipTrackId)
+    const rest = scored.filter((r) => (r.id as string) !== mentorshipTrackId)
+    return [...pinned, ...rest]
+  }, [candidate, trackDocs, mentorshipTrackId])
 
-  // Default selection = top match; keep the user's pick if still present.
+  // Default selection = the mentorship track if any, else top match; keep the
+  // user's pick if still present.
   const selected = useMemo<Ranked | null>(() => {
     if (ranked.length === 0) return null
-    return ranked.find((r) => r.id === selectedId) ?? ranked[0]
-  }, [ranked, selectedId])
+    if (selectedId) return ranked.find((r) => r.id === selectedId) ?? ranked[0]
+    if (mentorshipTrackId) return ranked.find((r) => (r.id as string) === mentorshipTrackId) ?? ranked[0]
+    return ranked[0]
+  }, [ranked, selectedId, mentorshipTrackId])
 
   const loading =
     candidateDoc === undefined || trackDocs === undefined || myTrackIds === undefined
@@ -147,6 +160,8 @@ export default function MatchExplorer() {
   }
 
   const selectedApplied = selected ? appliedSet.has(selected.id) : false
+  const inMentorship = !!mentorshipTrackId
+  const selectedIsMentorship = !!selected && (selected.id as string) === mentorshipTrackId
 
   async function onApply() {
     if (!selected) return
@@ -216,7 +231,11 @@ export default function MatchExplorer() {
                   <div className="mt-2.5">
                     <ProgressBar value={r.overall} tone={fitTone(r.overall)} />
                   </div>
-                  {applied && (
+                  {(r.id as string) === mentorshipTrackId ? (
+                    <span className="mt-2 inline-block text-[10px] font-bold uppercase tracking-[0.08em] text-gold-ink">
+                      ★ Your mentorship
+                    </span>
+                  ) : applied && (
                     <span className="mt-2 inline-block text-[10px] font-bold uppercase tracking-[0.08em] text-success-ink">
                       ✓ Applied
                     </span>
@@ -233,12 +252,27 @@ export default function MatchExplorer() {
 
               <Card className="flex flex-col gap-3 p-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-ink">
-                    Apply to {selected.track.title}
-                  </p>
-                  <p className="mt-0.5 text-xs text-ink-soft">
-                    Submits your {selected.overall}% weighted match with the application.
-                  </p>
+                  {selectedIsMentorship ? (
+                    <>
+                      <p className="text-sm font-semibold text-ink">
+                        You're mentoring in {selected.track.title}
+                      </p>
+                      <p className="mt-0.5 text-xs text-ink-soft">
+                        This is your active mentorship — the assessment is anchored here while it runs.
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm font-semibold text-ink">
+                        Apply to {selected.track.title}
+                      </p>
+                      <p className="mt-0.5 text-xs text-ink-soft">
+                        {inMentorship
+                          ? 'Finish or leave your current mentorship to apply to another track.'
+                          : `Submits your ${selected.overall}% weighted match with the application.`}
+                      </p>
+                    </>
+                  )}
                   {applyState.kind === 'success' && (
                     <p className="mt-1.5 text-xs font-semibold text-success-ink">
                       Application submitted. The org is now on the clock for your interview SLA.
@@ -249,8 +283,12 @@ export default function MatchExplorer() {
                   )}
                 </div>
                 <div className="shrink-0">
-                  {selectedApplied || applyState.kind === 'success' ? (
+                  {selectedIsMentorship ? (
+                    <Badge tone="gold">★ Your mentorship</Badge>
+                  ) : selectedApplied || applyState.kind === 'success' ? (
                     <Badge tone="success">✓ Applied</Badge>
+                  ) : inMentorship ? (
+                    <Button variant="secondary" disabled>Finish your mentorship to apply</Button>
                   ) : (
                     <Button
                       variant="primary"
