@@ -5,11 +5,19 @@ import { Logo } from '../ui'
 import { Cta } from './Cta'
 
 /* ------------------------------------------------------------------ */
-/*  Landing header — brand mark + a single primary way in. Sticky and  */
-/*  translucent so the cream page reads through it.                    */
+/*  Landing header — brand mark + a clear way in. Sticky and           */
+/*  translucent so the cream page reads through it. "Sign in" opens    */
+/*  the built-in auth panel (falls back to /login without a handler);  */
+/*  "Get started" is the primary CTA into the same panel.              */
 /* ------------------------------------------------------------------ */
 
-export function Header({ onGetStarted }: { onGetStarted?: () => void }) {
+export function Header({
+  onGetStarted,
+  onSignIn,
+}: {
+  onGetStarted?: () => void
+  onSignIn?: () => void
+}) {
   return (
     <header className="sticky top-0 z-50 border-b border-line bg-cream/85 backdrop-blur-sm">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5">
@@ -19,12 +27,22 @@ export function Header({ onGetStarted }: { onGetStarted?: () => void }) {
         </Link>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <Link
-            href="/login"
-            className="hidden px-3 py-2 text-sm font-semibold text-ink-soft transition-colors duration-150 hover:text-ink sm:inline-flex"
-          >
-            Sign in
-          </Link>
+          {onSignIn ? (
+            <button
+              type="button"
+              onClick={onSignIn}
+              className="hidden px-3 py-2 text-sm font-semibold text-ink-soft transition-colors duration-150 hover:text-ink sm:inline-flex"
+            >
+              Sign in
+            </button>
+          ) : (
+            <Link
+              href="/login"
+              className="hidden px-3 py-2 text-sm font-semibold text-ink-soft transition-colors duration-150 hover:text-ink sm:inline-flex"
+            >
+              Sign in
+            </Link>
+          )}
           <Cta variant="primary" label="Get started" onClick={onGetStarted} />
         </div>
       </div>

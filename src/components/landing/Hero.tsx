@@ -69,14 +69,15 @@ export function Hero({
           <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Cta
               variant="primary"
-              label="Start your work-style quiz"
+              label="Get started"
               onClick={onGetStarted}
               dataAttr="data-hero-cta"
             />
             <Cta
               variant="secondary"
-              label="Explore tracks"
+              label="Explore the live demo"
               onClick={onExplore}
+              href="/demo"
               dataAttr="data-hero-cta"
             />
           </div>

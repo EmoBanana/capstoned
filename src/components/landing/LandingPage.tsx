@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef } from 'react'
-import Link from 'next/link'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { Logo } from '../ui'
@@ -12,6 +11,7 @@ import { HowItWorks } from './HowItWorks'
 import { AnimalsTeaser } from './AnimalsTeaser'
 import { Audiences } from './Audiences'
 import { ClosingCTA } from './ClosingCTA'
+import AuthPanel from './AuthPanel'
 
 gsap.registerPlugin(ScrollTrigger)
 
@@ -19,11 +19,15 @@ gsap.registerPlugin(ScrollTrigger)
 const useIsoLayout = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 
 /* ------------------------------------------------------------------ */
-/*  CapStoned — marketing landing page.                                */
+/*  CapStoned — marketing landing page + built-in front door.          */
 /*                                                                      */
-/*  Self-contained, integration-agnostic React component. Pass         */
-/*  onGetStarted / onExplore to wire the CTAs; without handlers the     */
-/*  CTAs fall back to a next/link to /login.                           */
+/*  The primary CTAs ("Get started") and the header "Sign in" open a    */
+/*  built-in <AuthPanel> modal so people sign in / register without     */
+/*  leaving the page. Secondary CTAs route to the live demo (/demo).    */
+/*                                                                      */
+/*  Still integration-agnostic: pass onGetStarted / onExplore to        */
+/*  override the CTAs; without them, "Get started" opens the auth panel */
+/*  and "Explore" links to /demo.                                       */
 /*                                                                      */
 /*  All GSAP work lives in one gsap.matchMedia() handler scoped to      */
 /*  `root`, so every tween + ScrollTrigger is auto-reverted on unmount  */
@@ -33,9 +37,9 @@ const useIsoLayout = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 /* ------------------------------------------------------------------ */
 
 export type LandingPageProps = {
-  /** Primary CTA. If absent, the CTA is a next/link to '/login'. */
+  /** Primary CTA override. If absent, "Get started" opens the auth panel. */
   onGetStarted?: () => void
-  /** Secondary CTA. If absent, the CTA is a next/link to '/login'. */
+  /** Secondary CTA override. If absent, "Explore" links to '/demo'. */
   onExplore?: () => void
   className?: string
 }
@@ -46,6 +50,18 @@ export default function LandingPage({
   className = '',
 }: LandingPageProps) {
   const root = useRef<HTMLDivElement>(null)
+
+  /* Built-in auth modal state. */
+  const [auth, setAuth] = useState<{ open: boolean; mode: 'signin' | 'register' }>(
+    { open: false, mode: 'signin' },
+  )
+  const openAuth = (mode: 'signin' | 'register') => setAuth({ open: true, mode })
+  const closeAuth = () => setAuth((s) => ({ ...s, open: false }))
+
+  /* Primary CTA: honor an explicit handler, else open the register panel. */
+  const handleGetStarted = onGetStarted ?? (() => openAuth('register'))
+  /* Header "Sign in": open the sign-in panel. */
+  const handleSignIn = () => openAuth('signin')
 
   useIsoLayout(() => {
     const mm = gsap.matchMedia()
@@ -94,15 +110,15 @@ export default function LandingPage({
 
   return (
     <div ref={root} className={`bg-cream text-ink ${className}`}>
-      <Header onGetStarted={onGetStarted} />
+      <Header onGetStarted={handleGetStarted} onSignIn={handleSignIn} />
 
       <main>
-        <Hero onGetStarted={onGetStarted} onExplore={onExplore} />
+        <Hero onGetStarted={handleGetStarted} onExplore={onExplore} />
         <Problem />
         <HowItWorks />
         <AnimalsTeaser />
         <Audiences />
-        <ClosingCTA onGetStarted={onGetStarted} onExplore={onExplore} />
+        <ClosingCTA onGetStarted={handleGetStarted} onExplore={onExplore} />
       </main>
 
       <footer className="border-t border-line bg-cream">
@@ -114,12 +130,18 @@ export default function LandingPage({
           </div>
           <p className="text-xs text-ink-faint">
             A talent-cultivation &amp; career-discovery platform ·{' '}
-            <Link href="/login" className="font-semibold text-ink-soft hover:text-ink">
+            <button
+              type="button"
+              onClick={handleSignIn}
+              className="font-semibold text-ink-soft hover:text-ink"
+            >
               Sign in
-            </Link>
+            </button>
           </p>
         </div>
       </footer>
+
+      <AuthPanel open={auth.open} initialMode={auth.mode} onClose={closeAuth} />
     </div>
   )
 }

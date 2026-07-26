@@ -34,10 +34,15 @@ export function ClosingCTA({
           <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
             <Cta
               variant="primary"
-              label="Start your work-style quiz"
+              label="Get started"
               onClick={onGetStarted}
             />
-            <Cta variant="secondary" label="Explore tracks" onClick={onExplore} />
+            <Cta
+              variant="secondary"
+              label="Explore the live demo"
+              onClick={onExplore}
+              href="/demo"
+            />
           </div>
         </div>
       </div>
