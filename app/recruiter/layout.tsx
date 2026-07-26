@@ -74,11 +74,7 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
           </nav>
 
           <div className="flex items-center gap-3">
-            <span className="hidden items-center gap-2 sm:inline-flex">
-              <span className="h-2.5 w-2.5 rounded-[1px]" style={{ backgroundColor: `#${org.brandColor}` }} />
-              <span className="text-[13px] font-bold text-ink">{org.name}</span>
-            </span>
-            <ProfileMenu />
+            <ProfileMenu profileHref="/recruiter/settings" />
           </div>
         </div>
 

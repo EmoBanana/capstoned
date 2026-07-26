@@ -41,7 +41,6 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
   if (candidate === undefined || !candidate?.profileComplete) return null
 
   const name = me.name || 'Candidate'
-  const sub = me.email || 'Candidate'
   const active = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
   return (
@@ -75,11 +74,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
           </nav>
 
           <div className="flex items-center gap-3">
-            <div className="hidden text-right sm:block">
-              <div className="text-[13px] font-bold leading-tight text-ink">{name}</div>
-              <div className="text-[11px] text-ink-faint">{sub}</div>
-            </div>
-            <ProfileMenu />
+            <ProfileMenu profileHref="/student/settings" />
           </div>
         </div>
 
