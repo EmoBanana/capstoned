@@ -1,7 +1,7 @@
 'use client'
 
 import { useMemo } from 'react'
-import { useQuery } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { computeMatch } from '@/src/lib/matching'
 import {
@@ -50,6 +50,19 @@ function searchNeedle(args: Record<string, unknown>): string {
   return (asString(args.skill) || asString(args.keyword) || asString(args.query)).trim()
 }
 
+/** Case-insensitive partial match of `needle` against a track's company/org
+ *  name OR its title — the two things a user names when asking to apply. */
+function trackNameMatches(track: TrackDoc, needle: string): boolean {
+  const n = needle.trim().toLowerCase()
+  if (n === '') return false
+  return track.title.toLowerCase().includes(n) || track.org.toLowerCase().includes(n)
+}
+
+/** Fallback motivation when the model doesn't supply one. Kept above the 40-char
+ *  minimum the Marketplace apply form enforces so applications look consistent. */
+const DEFAULT_APPLY_NOTE =
+  "I'm genuinely excited about this track and ready to commit the time to learn quickly and contribute to the team."
+
 /** Case-insensitive match of `needle` against a track's searchable text. */
 function trackMatches(track: TrackDoc, needle: string): boolean {
   const hay = [
@@ -68,6 +81,8 @@ function trackMatches(track: TrackDoc, needle: string): boolean {
 export default function TrackAssistantConnected({ className }: { className?: string }) {
   const trackData = useQuery(api.tracks.list) as TrackDoc[] | undefined
   const candidate = useQuery(api.candidates.current) as CandidateDoc | null | undefined
+  const myTrackIds = useQuery(api.applications.myTrackIds) as string[] | undefined
+  const apply = useMutation(api.applications.apply)
 
   const executors = useMemo<ToolExecutors>(() => {
     return {
@@ -173,8 +188,75 @@ export default function TrackAssistantConnected({ className }: { className?: str
           data: compact,
         }
       },
+
+      // apply_to_track: REAL — submits an application via the Convex
+      // `applications.apply` mutation, gated on a completed candidate profile.
+      async apply_to_track(args): Promise<ToolResult> {
+        if (trackData === undefined || candidate === undefined || myTrackIds === undefined) {
+          return { ok: false, summary: 'Track data is still loading, try again in a moment.' }
+        }
+
+        const wanted = asString(args.track).trim()
+        if (wanted === '') {
+          return {
+            ok: false,
+            summary:
+              'Tell me which track to apply to — a company or track name. Try "find tracks" to see what\'s open.',
+          }
+        }
+
+        const track = trackData.find((t) => trackNameMatches(t, wanted))
+        if (!track) {
+          return {
+            ok: false,
+            summary: `I couldn't find a track matching "${wanted}". Try "find tracks" to see what's open.`,
+          }
+        }
+
+        // No profile / onboarding not finished — the mutation would reject, so
+        // we never call it and guide the user to onboarding instead.
+        if (candidate === null || !candidate.profileComplete) {
+          return {
+            ok: false,
+            summary:
+              "You'll need to finish your quick profile first (the onboarding quiz). Once that's done I can apply for you.",
+          }
+        }
+
+        // Already applied — the mutation would return the existing id; short-circuit.
+        if (myTrackIds.includes(track.id)) {
+          return {
+            ok: true,
+            summary: `You're already in the applicant pool for ${track.title} at ${track.org}.`,
+          }
+        }
+
+        const overall = computeMatch(toCandidateProfile(candidate), toTrack(track)).overall
+        const note = asString(args.note).trim() || DEFAULT_APPLY_NOTE
+
+        try {
+          await apply({
+            trackId: track._id,
+            matchScore: overall,
+            note,
+            availability: 'Immediately',
+            hoursPerWeek: candidate.availabilityHoursPerWeek,
+          })
+        } catch {
+          return {
+            ok: false,
+            summary: `I couldn't submit your application to ${track.title} just now. Please try again in a moment.`,
+          }
+        }
+
+        return {
+          ok: true,
+          summary: `Applied to ${track.title} at ${track.org}: ${overall}% fit. The team reviews applicants within ${track.slaHours}h.`,
+          data: { title: track.title, org: track.org, id: track.id, overall },
+        }
+      },
     }
-  }, [trackData, candidate])
+  }, [trackData, candidate, myTrackIds, apply])
 
   return <TrackAssistant executors={executors} className={className} />
 }

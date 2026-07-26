@@ -73,6 +73,19 @@ export const TOOLS: ToolDef[] = [
     },
     example: { interests: ['data', 'problem solving'], animal: 'owl' },
   },
+  {
+    name: 'apply_to_track',
+    description:
+      "Apply to an open track on the user's behalf when they ask to apply to, sign up for, or join a track. Identify the track by the company or track name they mention.",
+    parameters: {
+      track: 'string — the company or track name to apply to',
+      note: 'string — a 1-2 sentence motivation for applying (optional)',
+    },
+    example: {
+      track: 'Stripe',
+      note: "I'm keen to deepen my backend skills on a real payments track.",
+    },
+  },
 ]
 
 /* ================================================================== */
@@ -347,6 +360,20 @@ export const STUB_EXECUTORS: ToolExecutors = {
       ok: true,
       summary: `Recommended "${pick.title}"${basis}. It builds ${pick.skills.join(', ')} over ${pick.durationWeeks} weeks.`,
       data: { track: pick },
+    }
+  },
+
+  // PLACEHOLDER — echoes a "would apply to X" summary. No real application is
+  // submitted here. The REAL executor (injected by TrackAssistantConnected)
+  // calls the Convex `applications.apply` mutation against live data.
+  async apply_to_track(args) {
+    const track = asString(args.track).trim() || 'that track'
+    const note = asString(args.note).trim()
+    const noteText = note ? ` with the note "${note}"` : ''
+    return {
+      ok: true,
+      summary: `Would apply to ${track}${noteText}. (Demo mode: no real application was submitted.)`,
+      data: { track, note, status: 'stub' },
     }
   },
 }
