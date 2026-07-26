@@ -3,8 +3,10 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useConvexAuth, useQuery } from 'convex/react'
+import { useAuthActions } from '@convex-dev/auth/react'
+import { api } from '@/convex/_generated/api'
 import { Logo } from '@/src/components/ui'
-import { useRole } from '@/src/lib/role-context'
 
 const TABS = [
   { href: '/student/marketplace', label: 'Marketplace' },
@@ -12,19 +14,33 @@ const TABS = [
   { href: '/student/assessment', label: 'AI Assessment' },
 ]
 
-const PROFILE = { name: 'John Doe', sub: 'Sunway University', initials: 'JD' }
+function initialsOf(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return 'ST'
+  return (parts[0][0] + (parts[1]?.[0] ?? '')).toUpperCase()
+}
 
 export default function StudentLayout({ children }: { children: React.ReactNode }) {
-  const { role, hydrated, signOut } = useRole()
+  const { isLoading, isAuthenticated } = useConvexAuth()
+  const me = useQuery(api.users.currentUser, isAuthenticated ? {} : 'skip')
+  const { signOut } = useAuthActions()
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
-    if (hydrated && role !== 'student') router.replace('/login')
-  }, [hydrated, role, router])
+    if (isLoading) return
+    if (!isAuthenticated) {
+      router.replace('/login')
+      return
+    }
+    if (me && me.role === 'recruiter') router.replace('/recruiter/dashboard')
+  }, [isLoading, isAuthenticated, me, router])
 
-  if (!hydrated || role !== 'student') return null
+  if (isLoading || !isAuthenticated || me === undefined || me === null) return null
+  if (me.role === 'recruiter') return null
 
+  const name = me.name || 'Student'
+  const sub = me.email || 'Student'
   const active = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
   return (
@@ -59,15 +75,15 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
 
           <div className="flex items-center gap-3">
             <div className="hidden text-right sm:block">
-              <div className="text-[13px] font-bold leading-tight text-ink">{PROFILE.name}</div>
-              <div className="text-[11px] text-ink-faint">{PROFILE.sub}</div>
+              <div className="text-[13px] font-bold leading-tight text-ink">{name}</div>
+              <div className="text-[11px] text-ink-faint">{sub}</div>
             </div>
             <div className="flex h-9 w-9 items-center justify-center rounded-[2px] border border-line-strong bg-paper text-xs font-bold text-ink">
-              {PROFILE.initials}
+              {initialsOf(name)}
             </div>
             <button
               onClick={() => {
-                signOut()
+                void signOut()
                 router.push('/login')
               }}
               className="border border-line px-3 py-2 text-xs font-semibold text-ink-soft rounded-[2px] transition-colors hover:border-ink hover:text-ink"
@@ -97,7 +113,7 @@ export default function StudentLayout({ children }: { children: React.ReactNode 
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 text-xs text-ink-faint">
           <span>CapStoned — mentorship that starts years before graduation.</span>
-          <span className="hidden sm:inline">{PROFILE.name}</span>
+          <span className="hidden sm:inline">{name}</span>
         </div>
       </footer>
     </div>

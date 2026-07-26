@@ -3,8 +3,10 @@
 import { useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useConvexAuth, useQuery } from 'convex/react'
+import { useAuthActions } from '@convex-dev/auth/react'
+import { api } from '@/convex/_generated/api'
 import { Logo, TalentbankLogo } from '@/src/components/ui'
-import { useRole } from '@/src/lib/role-context'
 
 const TABS = [
   { href: '/recruiter/dashboard', label: 'Dashboard' },
@@ -15,15 +17,23 @@ const TABS = [
 ]
 
 export default function RecruiterLayout({ children }: { children: React.ReactNode }) {
-  const { role, hydrated, signOut } = useRole()
+  const { isLoading, isAuthenticated } = useConvexAuth()
+  const me = useQuery(api.users.currentUser, isAuthenticated ? {} : 'skip')
+  const { signOut } = useAuthActions()
   const router = useRouter()
   const pathname = usePathname()
 
   useEffect(() => {
-    if (hydrated && role !== 'recruiter') router.replace('/login')
-  }, [hydrated, role, router])
+    if (isLoading) return
+    if (!isAuthenticated) {
+      router.replace('/login')
+      return
+    }
+    if (me && me.role === 'student') router.replace('/student/marketplace')
+  }, [isLoading, isAuthenticated, me, router])
 
-  if (!hydrated || role !== 'recruiter') return null
+  if (isLoading || !isAuthenticated || me === undefined || me === null) return null
+  if (me.role === 'student') return null
 
   const active = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
@@ -63,7 +73,7 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
             </span>
             <button
               onClick={() => {
-                signOut()
+                void signOut()
                 router.push('/login')
               }}
               className="border border-line px-3 py-2 text-xs font-semibold text-ink-soft rounded-[2px] transition-colors hover:border-ink hover:text-ink"

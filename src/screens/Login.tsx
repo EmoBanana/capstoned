@@ -1,29 +1,29 @@
 'use client'
 
 import { useState, type FormEvent } from 'react'
-import { Logo, Button, Field, Input, Badge } from '../components/ui'
+import { Logo, Button, Field, Input } from '../components/ui'
 
 export type Role = 'student' | 'recruiter'
-
 type Mode = 'signin' | 'register'
 
-const ROLES: {
-  id: Role
-  label: string
-  desc: string
-  prefillEmail: string
-}[] = [
+export type LoginValues = {
+  mode: Mode
+  role: Role
+  name: string
+  email: string
+  password: string
+}
+
+const ROLES: { id: Role; label: string; desc: string }[] = [
   {
     id: 'student',
     label: 'Student',
     desc: 'Browse mentorship tracks, apply, and track your progress and feedback.',
-    prefillEmail: 'john.doe@sunway.edu.my',
   },
   {
     id: 'recruiter',
     label: 'Recruiter',
     desc: 'Design programs, review applicants, and mentor your enrolled talent.',
-    prefillEmail: 'talent@talentbank.co',
   },
 ]
 
@@ -33,19 +33,24 @@ const VALUE_PROPS: string[] = [
   'AI assessments both sides can see.',
 ]
 
-export default function Login({ onSelect }: { onSelect: (role: Role) => void }) {
+export default function Login({
+  onSubmit,
+  error,
+  pending = false,
+}: {
+  onSubmit: (values: LoginValues) => void
+  error?: string | null
+  pending?: boolean
+}) {
   const [mode, setMode] = useState<Mode>('signin')
   const [role, setRole] = useState<Role>('student')
-  const [email, setEmail] = useState<string>(ROLES[0].prefillEmail)
-
-  const chooseRole = (r: Role): void => {
-    setRole(r)
-    setEmail(ROLES.find((x) => x.id === r)!.prefillEmail)
-  }
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
 
   const submit = (e: FormEvent): void => {
     e.preventDefault()
-    onSelect(role)
+    onSubmit({ mode, role, name, email, password })
   }
 
   return (
@@ -80,7 +85,9 @@ export default function Login({ onSelect }: { onSelect: (role: Role) => void }) 
           </ul>
         </div>
 
-        <p className="text-xs text-cream/40">Prototype · choose a role to explore the experience.</p>
+        <p className="text-xs text-cream/40">
+          Mentorship that starts years before graduation.
+        </p>
       </div>
 
       {/* ---- Auth form ---- */}
@@ -126,20 +133,44 @@ export default function Login({ onSelect }: { onSelect: (role: Role) => void }) 
           <form onSubmit={submit} className="mt-7 space-y-5">
             {mode === 'register' && (
               <Field label="Full name" htmlFor="name">
-                <Input key={role} id="name" defaultValue={role === 'student' ? 'John Doe' : 'Talentbank'} />
+                <Input
+                  id="name"
+                  name="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Your full name"
+                  autoComplete="name"
+                  required
+                />
               </Field>
             )}
             <Field label="Email" htmlFor="email">
               <Input
                 id="email"
+                name="email"
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
+                placeholder="you@email.com"
                 autoComplete="email"
+                required
               />
             </Field>
-            <Field label="Password" htmlFor="password">
-              <Input id="password" type="password" defaultValue="capstoned" autoComplete="current-password" />
+            <Field
+              label="Password"
+              htmlFor="password"
+              hint={mode === 'register' ? 'At least 8 characters' : undefined}
+            >
+              <Input
+                id="password"
+                name="password"
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder={mode === 'register' ? 'Create a password' : 'Your password'}
+                autoComplete={mode === 'register' ? 'new-password' : 'current-password'}
+                required
+              />
             </Field>
 
             {/* role selection */}
@@ -155,7 +186,7 @@ export default function Login({ onSelect }: { onSelect: (role: Role) => void }) 
                     <button
                       key={r.id}
                       type="button"
-                      onClick={() => chooseRole(r.id)}
+                      onClick={() => setRole(r.id)}
                       aria-pressed={active}
                       className={`flex flex-col gap-1.5 border p-4 text-left rounded-[2px] transition-colors ${
                         active
@@ -180,14 +211,30 @@ export default function Login({ onSelect }: { onSelect: (role: Role) => void }) 
               </div>
             </div>
 
-            <Button type="submit" size="lg" className="w-full">
-              {mode === 'signin' ? 'Sign in' : 'Create account'} as {role === 'student' ? 'Student' : 'Recruiter'}
+            <Button type="submit" size="lg" className="w-full" disabled={pending}>
+              {pending
+                ? 'Please wait…'
+                : `${mode === 'signin' ? 'Sign in' : 'Create account'} as ${
+                    role === 'student' ? 'Student' : 'Recruiter'
+                  }`}
             </Button>
+
+            {error && (
+              <p className="text-sm font-medium text-danger" role="alert">
+                {error}
+              </p>
+            )}
           </form>
 
-          <p className="mt-5 flex items-center gap-2 text-xs text-ink-faint">
-            <Badge tone="neutral">Demo</Badge>
-            Any credentials work — selecting a role loads that experience.
+          <p className="mt-5 text-center text-xs text-ink-faint">
+            {mode === 'signin' ? 'New to CapStoned? ' : 'Already have an account? '}
+            <button
+              type="button"
+              onClick={() => setMode(mode === 'signin' ? 'register' : 'signin')}
+              className="font-semibold text-ink underline underline-offset-2"
+            >
+              {mode === 'signin' ? 'Create one' : 'Sign in'}
+            </button>
           </p>
         </div>
       </div>

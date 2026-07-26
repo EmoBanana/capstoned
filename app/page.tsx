@@ -2,18 +2,23 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { useRole } from '@/src/lib/role-context'
+import { useConvexAuth, useQuery } from 'convex/react'
+import { api } from '@/convex/_generated/api'
 
 export default function Home() {
   const router = useRouter()
-  const { role, hydrated } = useRole()
+  const { isLoading, isAuthenticated } = useConvexAuth()
+  const me = useQuery(api.users.currentUser, isAuthenticated ? {} : 'skip')
 
   useEffect(() => {
-    if (!hydrated) return
-    if (role === 'student') router.replace('/student/marketplace')
-    else if (role === 'recruiter') router.replace('/recruiter/dashboard')
-    else router.replace('/login')
-  }, [hydrated, role, router])
+    if (isLoading) return
+    if (!isAuthenticated) {
+      router.replace('/login')
+      return
+    }
+    if (me === undefined) return
+    router.replace(me?.role === 'recruiter' ? '/recruiter/dashboard' : '/student/marketplace')
+  }, [isLoading, isAuthenticated, me, router])
 
   return null
 }
