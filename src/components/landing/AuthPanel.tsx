@@ -8,7 +8,6 @@ import {
   useState,
   type FormEvent,
 } from 'react'
-import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAuthActions } from '@convex-dev/auth/react'
 import gsap from 'gsap'
@@ -165,13 +164,17 @@ export default function AuthPanel({
     setError(null)
     setPending(true)
     try {
-      await signIn('password', {
-        email,
-        password,
-        name,
-        role,
-        flow: mode === 'register' ? 'signUp' : 'signIn',
-      })
+      if (mode === 'register') {
+        await signIn('password', {
+          email,
+          password,
+          name,
+          role,
+          flow: 'signUp',
+        })
+      } else {
+        await signIn('password', { email, password, flow: 'signIn' })
+      }
       router.push('/')
     } catch {
       setError(
@@ -320,49 +323,51 @@ export default function AuthPanel({
               />
             </Field>
 
-            {/* role selection */}
-            <div>
-              <div className="mb-2 flex items-baseline justify-between">
-                <span className="text-sm font-semibold text-ink">I am a</span>
-                <span className="text-xs text-ink-faint">choose one</span>
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                {ROLES.map((r) => {
-                  const active = role === r.id
-                  return (
-                    <button
-                      key={r.id}
-                      type="button"
-                      onClick={() => setRole(r.id)}
-                      aria-pressed={active}
-                      className={`flex flex-col gap-1.5 border p-3.5 text-left rounded-[2px] transition-colors duration-150 ${
-                        active
-                          ? 'border-ink bg-paper'
-                          : 'border-line-strong bg-white hover:border-ink/40'
-                      }`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-bold text-ink">
-                          {r.label}
+            {/* role selection — only relevant when creating an account */}
+            {mode === 'register' && (
+              <div>
+                <div className="mb-2 flex items-baseline justify-between">
+                  <span className="text-sm font-semibold text-ink">I am a</span>
+                  <span className="text-xs text-ink-faint">choose one</span>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {ROLES.map((r) => {
+                    const active = role === r.id
+                    return (
+                      <button
+                        key={r.id}
+                        type="button"
+                        onClick={() => setRole(r.id)}
+                        aria-pressed={active}
+                        className={`flex flex-col gap-1.5 border p-3.5 text-left rounded-[2px] transition-colors duration-150 ${
+                          active
+                            ? 'border-ink bg-paper'
+                            : 'border-line-strong bg-white hover:border-ink/40'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-bold text-ink">
+                            {r.label}
+                          </span>
+                          <span
+                            className={`flex h-4 w-4 items-center justify-center rounded-full border ${
+                              active ? 'border-ink bg-ink' : 'border-line-strong'
+                            }`}
+                          >
+                            {active && (
+                              <span className="h-1.5 w-1.5 rounded-full bg-cream" />
+                            )}
+                          </span>
+                        </div>
+                        <span className="text-xs leading-relaxed text-ink-soft">
+                          {r.desc}
                         </span>
-                        <span
-                          className={`flex h-4 w-4 items-center justify-center rounded-full border ${
-                            active ? 'border-ink bg-ink' : 'border-line-strong'
-                          }`}
-                        >
-                          {active && (
-                            <span className="h-1.5 w-1.5 rounded-full bg-cream" />
-                          )}
-                        </span>
-                      </div>
-                      <span className="text-xs leading-relaxed text-ink-soft">
-                        {r.desc}
-                      </span>
-                    </button>
-                  )
-                })}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
+            )}
 
             <Button
               type="submit"
@@ -372,9 +377,9 @@ export default function AuthPanel({
             >
               {pending
                 ? 'Please wait…'
-                : `${
-                    mode === 'signin' ? 'Sign in' : 'Create account'
-                  } as ${activeRoleLabel}`}
+                : mode === 'signin'
+                  ? 'Sign in'
+                  : `Create account as ${activeRoleLabel}`}
             </Button>
 
             {error && (
@@ -397,12 +402,6 @@ export default function AuthPanel({
                 {mode === 'signin' ? 'Create one' : 'Sign in'}
               </button>
             </p>
-            <Link
-              href="/demo"
-              className="text-xs font-semibold text-ink-soft underline underline-offset-2 hover:text-ink"
-            >
-              Skip and explore the live demo
-            </Link>
           </div>
         </div>
       </div>

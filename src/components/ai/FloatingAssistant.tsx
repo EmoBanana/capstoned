@@ -17,7 +17,7 @@ import TrackAssistantConnected from './TrackAssistantConnected'
 /** Routes where the bubble must NOT appear (marketing / auth / onboarding). */
 function isGatedRoute(pathname: string): boolean {
   if (pathname === '/') return true
-  const gatedPrefixes = ['/welcome', '/login', '/onboarding', '/demo']
+  const gatedPrefixes = ['/welcome', '/onboarding']
   return gatedPrefixes.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
   )

@@ -9,10 +9,10 @@ import { Cta } from './Cta'
 
 export function ClosingCTA({
   onGetStarted,
-  onExplore,
+  onSignIn,
 }: {
   onGetStarted?: () => void
-  onExplore?: () => void
+  onSignIn?: () => void
 }) {
   return (
     <section className="bg-paper">
@@ -37,9 +37,8 @@ export function ClosingCTA({
             />
             <Cta
               variant="secondary"
-              label="Explore the live demo"
-              onClick={onExplore}
-              href="/demo"
+              label="Sign in"
+              onClick={onSignIn}
             />
           </div>
         </div>

@@ -29,10 +29,10 @@ const PREVIEW_MILESTONES: { week: string; title: string; done: boolean }[] = [
 
 export function Hero({
   onGetStarted,
-  onExplore,
+  onSignIn,
 }: {
   onGetStarted?: () => void
-  onExplore?: () => void
+  onSignIn?: () => void
 }) {
   return (
     <section className="relative overflow-hidden border-b border-line bg-gradient-to-b from-cream to-paper">
@@ -70,9 +70,8 @@ export function Hero({
             />
             <Cta
               variant="secondary"
-              label="Explore the live demo"
-              onClick={onExplore}
-              href="/demo"
+              label="Sign in"
+              onClick={onSignIn}
               dataAttr="data-hero-cta"
             />
           </div>

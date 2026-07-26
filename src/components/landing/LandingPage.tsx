@@ -21,13 +21,12 @@ const useIsoLayout = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 /* ------------------------------------------------------------------ */
 /*  CapStoned — marketing landing page + built-in front door.          */
 /*                                                                      */
-/*  The primary CTAs ("Get started") and the header "Sign in" open a    */
-/*  built-in <AuthPanel> modal so people sign in / register without     */
-/*  leaving the page. Secondary CTAs route to the live demo (/demo).    */
+/*  Every CTA opens the built-in <AuthPanel> modal so people sign in or */
+/*  register without leaving the page. "Get started" opens it in        */
+/*  create-account mode; "Sign in" opens it in sign-in mode.            */
 /*                                                                      */
-/*  Still integration-agnostic: pass onGetStarted / onExplore to        */
-/*  override the CTAs; without them, "Get started" opens the auth panel */
-/*  and "Explore" links to /demo.                                       */
+/*  Still integration-agnostic: pass onGetStarted to override the       */
+/*  primary CTA; without it, "Get started" opens the auth panel.        */
 /*                                                                      */
 /*  All GSAP work lives in one gsap.matchMedia() handler scoped to      */
 /*  `root`, so every tween + ScrollTrigger is auto-reverted on unmount  */
@@ -39,14 +38,11 @@ const useIsoLayout = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 export type LandingPageProps = {
   /** Primary CTA override. If absent, "Get started" opens the auth panel. */
   onGetStarted?: () => void
-  /** Secondary CTA override. If absent, "Explore" links to '/demo'. */
-  onExplore?: () => void
   className?: string
 }
 
 export default function LandingPage({
   onGetStarted,
-  onExplore,
   className = '',
 }: LandingPageProps) {
   const root = useRef<HTMLDivElement>(null)
@@ -113,12 +109,12 @@ export default function LandingPage({
       <Header onGetStarted={handleGetStarted} onSignIn={handleSignIn} />
 
       <main>
-        <Hero onGetStarted={handleGetStarted} onExplore={onExplore} />
+        <Hero onGetStarted={handleGetStarted} onSignIn={handleSignIn} />
         <Problem />
         <HowItWorks />
         <AnimalsTeaser />
         <Audiences />
-        <ClosingCTA onGetStarted={handleGetStarted} onExplore={onExplore} />
+        <ClosingCTA onGetStarted={handleGetStarted} onSignIn={handleSignIn} />
       </main>
 
       <footer className="border-t border-line bg-cream">
