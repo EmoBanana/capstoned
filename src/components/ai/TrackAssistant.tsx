@@ -225,8 +225,10 @@ function ChatBubble({ role, content }: { role: 'user' | 'assistant'; content: st
   )
 }
 
-/** The "ran a tool" affordance. Shows ONLY what the executor returned —
- *  never fabricated — plus whether the executor is a stub or real. */
+/** The "ran a tool" affordance — a compact trust signal that a real action
+ *  happened. The raw executor payload is fed to the model (which writes the
+ *  natural-language reply) but not dumped here; only errors surface their
+ *  detail, so failures stay visible. */
 function ToolCard({
   tool,
   result,
@@ -238,8 +240,8 @@ function ToolCard({
 }) {
   return (
     <div className="flex justify-start">
-      <div className="max-w-[90%] min-w-0 rounded-[2px] border border-line-strong bg-cream px-3.5 py-2.5">
-        <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
+      <div className="inline-flex max-w-[90%] min-w-0 flex-col rounded-[2px] border border-line-strong bg-cream px-3 py-2">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className={result.ok ? 'text-gold' : 'text-danger'}>
             <ToolIcon />
           </span>
@@ -248,9 +250,11 @@ function ToolCard({
           </span>
           <Badge tone={isStub ? 'slate' : 'success'}>{isStub ? 'Stub' : 'Live'}</Badge>
         </div>
-        <p className="text-sm leading-relaxed text-ink whitespace-pre-wrap break-words [overflow-wrap:anywhere] text-justify hyphens-auto">
-          {result.summary}
-        </p>
+        {!result.ok && (
+          <p className="mt-1.5 text-sm leading-relaxed text-danger-ink whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+            {result.summary}
+          </p>
+        )}
       </div>
     </div>
   )
