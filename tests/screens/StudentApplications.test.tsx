@@ -3,7 +3,7 @@ import { vi } from 'vitest'
 import { getFunctionName } from 'convex/server'
 
 const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
-vi.mock('convex/react', () => ({ useQuery: (...a: unknown[]) => useQueryMock(...a) }))
+vi.mock('convex/react', () => ({ useQuery: (...a: unknown[]) => useQueryMock(...a), useMutation: () => vi.fn() }))
 
 import StudentApplications from '@/src/screens/StudentApplications'
 

@@ -1,9 +1,11 @@
 'use client'
 
-import { useQuery } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
+import type { Id } from '@/convex/_generated/dataModel'
 import { Page, Card, Badge, ProgressBar, Eyebrow } from '../components/ui'
 import { CompanyLogo } from '../components/CompanyLogo'
+import { SkeletonGrid } from '../components/Skeleton'
 
 /* ------------------------------------------------------------------ */
 /*  Student · My Applications — live status of every track applied to.  */
@@ -32,6 +34,7 @@ const matchTone = (v: number): 'success' | 'gold' | 'danger' => (v >= 75 ? 'succ
 
 export default function StudentApplications() {
   const apps = useQuery(api.applications.mine) as App[] | undefined
+  const withdraw = useMutation(api.applications.withdraw)
   const now = Date.now()
 
   const appliedLabel = (ms: number) => {
@@ -51,9 +54,7 @@ export default function StudentApplications() {
       </header>
 
       {apps === undefined ? (
-        <Card className="px-6 py-16 text-center">
-          <p className="text-sm font-semibold text-ink-soft">Loading your applications…</p>
-        </Card>
+        <SkeletonGrid count={4} className="sm:grid-cols-2" />
       ) : apps.length === 0 ? (
         <Card className="px-6 py-16 text-center">
           <p className="text-sm font-semibold text-ink">You haven't applied to any tracks yet.</p>
@@ -97,9 +98,18 @@ export default function StudentApplications() {
                 <div className="mt-auto flex items-center justify-between gap-3 pt-6 text-xs">
                   <span className="text-ink-faint">Applied {appliedLabel(a.appliedAt)}</span>
                   {a.status === 'pending' ? (
-                    <span className={`${rem < 16 ? 'text-gold-ink font-medium' : 'text-ink-faint'}`}>
-                      Interview within {rem}h
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className={`${rem < 16 ? 'text-gold-ink font-medium' : 'text-ink-faint'}`}>
+                        Interview within {rem}h
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => void withdraw({ applicationId: a.id as Id<'applications'> })}
+                        className="font-semibold text-ink-faint transition-colors hover:text-danger"
+                      >
+                        Withdraw
+                      </button>
+                    </div>
                   ) : a.status === 'accepted' ? (
                     <span className="font-semibold text-success-ink">✓ Interviewing</span>
                   ) : (

@@ -19,6 +19,8 @@ import {
 } from '../components/ui'
 import { CompanyLogo } from '../components/CompanyLogo'
 import { errorText } from '../components/errors'
+import { useDialog } from '../components/useDialog'
+import { SkeletonGrid } from '../components/Skeleton'
 
 const AVAILABILITY = ['Immediately', 'Within 2 weeks', 'Within a month', 'Flexible']
 
@@ -175,11 +177,17 @@ function ApplyModal({
   const [availability, setAvailability] = useState(AVAILABILITY[0])
   const [hours, setHours] = useState(track.weeklyHours)
   const valid = note.trim().length >= 40
+  const dialogRef = useDialog<HTMLDivElement>(onClose)
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose}>
       <div
-        className="max-h-[92vh] w-full max-w-lg overflow-y-auto border border-line-strong bg-cream rounded-t-[6px] sm:rounded-[4px]"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={`Apply to ${track.title}`}
+        tabIndex={-1}
+        className="max-h-[92vh] w-full max-w-lg overflow-y-auto border border-line-strong bg-cream rounded-t-[6px] focus:outline-none sm:rounded-[4px]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-3 border-b border-line px-6 py-5">
@@ -260,9 +268,10 @@ function TrackDetailModal({
   onClose: () => void
 }) {
   const full = track.applicants >= track.cap
+  const dialogRef = useDialog<HTMLDivElement>(onClose)
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose}>
-      <div className="flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden border border-line-strong bg-cream rounded-t-[6px] sm:rounded-[4px]" onClick={(e) => e.stopPropagation()}>
+      <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={track.title} tabIndex={-1} className="flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden border border-line-strong bg-cream rounded-t-[6px] focus:outline-none sm:rounded-[4px]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start gap-3 border-b border-line px-6 py-5">
           <CompanyLogo slug={track.orgSlug} name={track.org} className="h-11 w-11" />
           <div className="min-w-0 flex-1">
@@ -505,9 +514,7 @@ export default function Marketplace() {
       </p>
 
       {loading ? (
-        <Card className="px-6 py-16 text-center">
-          <p className="text-sm font-semibold text-ink-soft">Loading open tracks…</p>
-        </Card>
+        <SkeletonGrid count={6} />
       ) : visible.length === 0 ? (
         <Card className="px-6 py-16 text-center">
           <p className="text-sm font-semibold text-ink">No tracks match your filters.</p>

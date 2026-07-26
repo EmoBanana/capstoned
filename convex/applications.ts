@@ -101,6 +101,20 @@ export const mine = query({
   },
 })
 
+/** Candidate withdraws a still-pending application (removes it entirely). */
+export const withdraw = mutation({
+  args: { applicationId: v.id('applications') },
+  handler: async (ctx, { applicationId }) => {
+    const candidate = await myCandidate(ctx)
+    if (!candidate) throw new ConvexError('Not signed in')
+    const app = await ctx.db.get(applicationId)
+    if (!app) return
+    if (app.candidateId !== candidate._id) throw new ConvexError('Not your application')
+    if (app.status !== 'pending') throw new ConvexError('Only pending applications can be withdrawn')
+    await ctx.db.delete(applicationId)
+  },
+})
+
 /** The review queue for an org's track: track summary + its applicants. */
 export const forOrg = query({
   args: { orgSlug: v.string() },

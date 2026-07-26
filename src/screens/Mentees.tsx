@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import type { Id } from '@/convex/_generated/dataModel'
@@ -84,6 +84,15 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
     active: mentee.tasks.filter((t) => t.status === 'in-progress' || t.status === 'todo').length,
     blocked: mentee.tasks.filter((t) => t.status === 'blocked').length,
   }
+  useEffect(() => {
+    if (!modalOpen) return
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setModalOpen(false) }
+    document.addEventListener('keydown', onKey)
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.removeEventListener('keydown', onKey); document.body.style.overflow = prev }
+  }, [modalOpen])
+
   const submitOffer = () => {
     void offer({
       enrollmentId: mentee.enrollmentId as Id<'enrollments'>,

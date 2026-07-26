@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react'
 import { useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import { Page, Card, Badge, Button, ProgressBar, Eyebrow, ReliabilityScore } from '../components/ui'
+import { SkeletonGrid } from '../components/Skeleton'
 
 /* ------------------------------------------------------------------ */
 /*  Company home — real mentorship programs for the recruiter's org.    */
@@ -152,7 +153,7 @@ export default function RecruiterDashboard({ onNavigate }: { onNavigate?: (id: s
       </div>
 
       {data === undefined ? (
-        <Card className="px-6 py-16 text-center"><p className="text-sm font-semibold text-ink-soft">Loading your programs…</p></Card>
+        <SkeletonGrid count={4} className="sm:grid-cols-2" />
       ) : programs.length === 0 ? (
         <Card className="px-6 py-16 text-center">
           <p className="text-sm font-semibold text-ink">No tracks yet.</p>

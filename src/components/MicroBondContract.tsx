@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Button } from './ui'
+import { useDialog } from './useDialog'
 
 /* ------------------------------------------------------------------ */
 /*  Micro-Bond Sponsorship Agreement — a real contract the student      */
@@ -102,6 +103,7 @@ export default function MicroBondContract({
   const s = sponsorship
   const executed = s.status === 'signed' || s.status === 'accepted'
   const canSign = !executed && !!onSign
+  const dialogRef = useDialog<HTMLDivElement>(onClose)
   const [name, setName] = useState('')
   const [agree, setAgree] = useState(false)
   const rows = clauses(s, studentName, trackTitle)
@@ -118,7 +120,12 @@ export default function MicroBondContract({
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose}>
       <div
-        className="flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden border border-line-strong bg-cream rounded-t-[6px] sm:rounded-[4px]"
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Micro-Bond Sponsorship Agreement"
+        tabIndex={-1}
+        className="flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden border border-line-strong bg-cream rounded-t-[6px] focus:outline-none sm:rounded-[4px]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-line px-6 py-4">
