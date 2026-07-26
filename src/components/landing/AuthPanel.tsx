@@ -46,7 +46,7 @@ const ROLES: { id: Role; label: string; desc: string }[] = [
   },
   {
     id: 'recruiter',
-    label: 'Employer',
+    label: 'Company',
     desc: 'Author milestone-driven tracks and observe how people really work over weeks.',
   },
 ]
@@ -185,7 +185,7 @@ export default function AuthPanel({
 
   if (!open) return null
 
-  const activeRoleLabel = role === 'student' ? 'Candidate' : 'Employer'
+  const activeRoleLabel = role === 'student' ? 'Candidate' : 'Company'
 
   return (
     <div

@@ -26,3 +26,4 @@ Two Claude Code sessions are building this repo in parallel. This file is the sh
 ## Status
 - Live on `main`: Next migration, test suite, flexible duration, Convex client, **auth**, marketplace tracks + logos (Session B). Foundation files committed in `bca65ac` (Session A's WIP).
 - **RESOLVED:** Session B owns all of `convex/` (schema + seed + queries), mirroring `domain.ts`. Session A stays in `src/lib` and does not touch `convex/`.
+- **Audience labels (app-wide):** the two roles display as **Candidate** (`student`) and **Company** (`recruiter`) everywhere — role values stay `student`/`recruiter`. Session B touched `landing/AuthPanel.tsx` + `landing/Audiences.tsx` to change "Employer" → "Company" for consistency (per user). Keep new copy using Candidate/Company, not Student/Recruiter/Employer.

@@ -25,7 +25,7 @@ const AUDIENCES: {
     icon: UserIcon,
   },
   {
-    tag: 'Employers',
+    tag: 'Companies',
     title: 'Design tracks, observe talent',
     detail:
       'Craft milestone-driven tracks and watch how people really work over weeks, not how they interview for an hour.',
