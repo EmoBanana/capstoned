@@ -43,7 +43,7 @@ const STARTERS: readonly string[] = [
 ]
 
 const GENERIC_ERROR =
-  'AI backend unavailable. Please make sure the model is running, then try again.'
+  'The assistant is unavailable right now — please try again in a moment.'
 
 /* ---- agent response shape --------------------------------------- */
 
@@ -329,8 +329,9 @@ export default function TrackAssistant({
       if (controller.signal.aborted) {
         setTurns((prev) => prev.filter((t) => t.kind !== 'pending'))
       } else {
-        const message = err instanceof Error && err.message ? err.message : GENERIC_ERROR
-        setError(message)
+        // Show a friendly message; keep the technical detail in the console.
+        console.error('Track assistant request failed:', err)
+        setError(GENERIC_ERROR)
         setTurns(afterUser)
       }
     } finally {

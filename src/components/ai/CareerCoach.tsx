@@ -59,7 +59,7 @@ const STARTERS: readonly string[] = [
 type Turn = { role: 'user' | 'assistant'; content: string }
 
 const GENERIC_ERROR =
-  'AI backend unavailable. Please make sure the model is running, then try again.'
+  'The Career Coach is unavailable right now — please try again in a moment.'
 
 /* ---- Icons (match StudentMentorship stroke convention) ----------- */
 
@@ -241,8 +241,9 @@ export default function CareerCoach({ className = '' }: { className?: string }) 
         // User pressed Stop: keep whatever streamed so far, drop empty bubbles.
         setTurns((prev) => prev.filter((t) => t.content.length > 0))
       } else {
-        const message = err instanceof Error && err.message ? err.message : GENERIC_ERROR
-        setError(message)
+        // Show a friendly message; keep the technical detail in the console.
+        console.error('Career Coach chat failed:', err)
+        setError(GENERIC_ERROR)
         // Roll the empty assistant placeholder back off the transcript.
         setTurns(nextHistory)
       }
