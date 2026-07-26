@@ -8,6 +8,7 @@ import { Header } from './Header'
 import { Hero } from './Hero'
 import { Problem } from './Problem'
 import { HowItWorks } from './HowItWorks'
+import { Benefits } from './Benefits'
 import { AnimalsTeaser } from './AnimalsTeaser'
 import { Audiences } from './Audiences'
 import { ClosingCTA } from './ClosingCTA'
@@ -112,6 +113,7 @@ export default function LandingPage({
         <Hero onGetStarted={handleGetStarted} onSignIn={handleSignIn} />
         <Problem />
         <HowItWorks />
+        <Benefits />
         <AnimalsTeaser />
         <Audiences />
         <ClosingCTA onGetStarted={handleGetStarted} onSignIn={handleSignIn} />
