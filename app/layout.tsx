@@ -3,6 +3,7 @@ import { Inter } from 'next/font/google'
 import { ConvexAuthNextjsServerProvider } from '@convex-dev/auth/nextjs/server'
 import './globals.css'
 import { ConvexClientProvider } from './providers'
+import FloatingAssistant from '@/src/components/ai/FloatingAssistant'
 
 const inter = Inter({ subsets: ['latin'], display: 'swap', variable: '--font-inter' })
 
@@ -17,7 +18,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <ConvexAuthNextjsServerProvider>
       <html lang="en" className={inter.variable}>
         <body>
-          <ConvexClientProvider>{children}</ConvexClientProvider>
+          <ConvexClientProvider>
+            {children}
+            <FloatingAssistant />
+          </ConvexClientProvider>
         </body>
       </html>
     </ConvexAuthNextjsServerProvider>
