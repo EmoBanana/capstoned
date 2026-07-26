@@ -13,6 +13,7 @@ const TABS = [
   { href: '/student/applications', label: 'My Applications' },
   { href: '/student/mentorship', label: 'My Mentorship' },
   { href: '/student/assessment', label: 'AI Assessment' },
+  { href: '/student/settings', label: 'Settings' },
 ]
 
 function initialsOf(name: string): string {

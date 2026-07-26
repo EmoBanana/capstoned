@@ -42,6 +42,9 @@ type TrackRow = {
   cap: number
   applicants: number
   requiredSkills: { name: string; weight: number; targetLevel: number }[]
+  objectives: string[]
+  deliverables: string[]
+  milestones: { id: string; week: number; title: string; detail: string }[]
   slaHours: number
   closesInDays: number
   reliability: number
@@ -89,18 +92,20 @@ function TrackCard({
   fit,
   applied,
   onApply,
+  onView,
 }: {
   track: TrackRow
   fit: number | null
   applied: boolean
   onApply: () => void
+  onView: () => void
 }) {
   const full = track.applicants >= track.cap
   const seatsLeft = Math.max(0, track.cap - track.applicants)
   const closesLabel = track.closesInDays === 1 ? 'closes tomorrow' : `${track.closesInDays}d left`
 
   return (
-    <Card className="flex flex-col p-6">
+    <Card className="flex cursor-pointer flex-col p-6 transition-colors hover:border-line-strong" onClick={onView}>
       <div className="flex items-center gap-3">
         <CompanyLogo slug={track.orgSlug} name={track.org} className="h-10 w-10" />
         <div className="min-w-0 flex-1">
@@ -142,7 +147,7 @@ function TrackCard({
             Waitlist
           </Button>
         ) : (
-          <Button variant="primary" size="sm" onClick={onApply}>
+          <Button variant="primary" size="sm" onClick={(e) => { e.stopPropagation(); onApply() }}>
             Apply
           </Button>
         )}
@@ -239,11 +244,119 @@ function ApplyModal({
   )
 }
 
+type Match = { overall: number; factors: { key: string; label: string; score: number; weight: number; rationale: string }[] }
+
+function TrackDetailModal({
+  track,
+  match,
+  applied,
+  onApply,
+  onClose,
+}: {
+  track: TrackRow
+  match: Match | null
+  applied: boolean
+  onApply: () => void
+  onClose: () => void
+}) {
+  const full = track.applicants >= track.cap
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose}>
+      <div className="flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden border border-line-strong bg-cream rounded-t-[6px] sm:rounded-[4px]" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start gap-3 border-b border-line px-6 py-5">
+          <CompanyLogo slug={track.orgSlug} name={track.org} className="h-11 w-11" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-ink">{track.org} · {track.department}</p>
+            <h3 className="text-lg font-bold leading-snug tracking-tight text-ink">{track.title}</h3>
+            <p className="mt-0.5 text-xs text-ink-soft">{commitmentLine(track)} · Interview within {track.slaHours}h</p>
+          </div>
+          <button onClick={onClose} aria-label="Close" className="text-ink-faint hover:text-ink">✕</button>
+        </div>
+
+        <div className="overflow-y-auto px-6 py-5">
+          <p className="text-sm leading-relaxed text-ink-soft">{track.summary}</p>
+
+          {match && (
+            <section className="mt-6">
+              <div className="flex items-baseline justify-between">
+                <h4 className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-faint">Why you match</h4>
+                <span className="text-sm font-bold tabular-nums text-ink">{match.overall}% overall</span>
+              </div>
+              <div className="mt-3 flex flex-col gap-3">
+                {match.factors.map((f) => (
+                  <div key={f.key}>
+                    <div className="mb-1 flex items-baseline justify-between text-xs">
+                      <span className="font-semibold text-ink">{f.label} <span className="font-normal text-ink-faint">· {Math.round(f.weight * 100)}% weight</span></span>
+                      <span className="font-semibold tabular-nums text-ink">{f.score}%</span>
+                    </div>
+                    <ProgressBar value={f.score} tone={fitTone(f.score)} height="h-1" />
+                    <p className="mt-1 text-[11px] leading-relaxed text-ink-faint">{f.rationale}</p>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          <div className="mt-6 grid grid-cols-1 gap-6 sm:grid-cols-2">
+            <section>
+              <h4 className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-faint">What you'll do</h4>
+              <ul className="mt-2 space-y-1.5 text-sm text-ink-soft">
+                {track.objectives.map((o, i) => <li key={i} className="flex gap-2"><span className="text-gold">·</span>{o}</li>)}
+              </ul>
+            </section>
+            <section>
+              <h4 className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-faint">Deliverables</h4>
+              <ul className="mt-2 space-y-1.5 text-sm text-ink-soft">
+                {track.deliverables.map((d, i) => <li key={i} className="flex gap-2"><span className="text-gold">·</span>{d}</li>)}
+              </ul>
+            </section>
+          </div>
+
+          {track.milestones.length > 0 && (
+            <section className="mt-6">
+              <h4 className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-faint">Milestones</h4>
+              <ol className="mt-2 space-y-2">
+                {track.milestones.map((m) => (
+                  <li key={m.id} className="flex gap-3 text-sm">
+                    <span className="mt-0.5 shrink-0 rounded-[2px] border border-line-strong bg-paper px-1.5 py-0.5 text-[10px] font-bold tabular-nums text-ink-soft">Wk {m.week}</span>
+                    <span className="text-ink-soft"><span className="font-semibold text-ink">{m.title}.</span> {m.detail}</span>
+                  </li>
+                ))}
+              </ol>
+            </section>
+          )}
+
+          <section className="mt-6">
+            <h4 className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-faint">Required skills</h4>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {track.requiredSkills.map((s) => (
+                <span key={s.name} className="border border-line-strong bg-paper px-2.5 py-1 text-xs font-medium text-ink-soft rounded-[2px]">{s.name}</span>
+              ))}
+            </div>
+          </section>
+        </div>
+
+        <div className="flex items-center justify-between gap-3 border-t border-line px-6 py-4">
+          <span className="text-xs text-ink-faint">{full ? 'Waitlist only' : `${Math.max(0, track.cap - track.applicants)} of ${track.cap} seats open`}</span>
+          {applied ? (
+            <span className="text-xs font-semibold text-success-ink">✓ Applied</span>
+          ) : full ? (
+            <Button variant="secondary" disabled>Waitlist</Button>
+          ) : (
+            <Button onClick={onApply}>Apply to this track</Button>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export default function Marketplace() {
   const [filter, setFilter] = useState<FilterChip>('All')
   const [query, setQuery] = useState<string>('')
   const [sort, setSort] = useState<SortKey>('fit')
   const [applyTrack, setApplyTrack] = useState<TrackRow | null>(null)
+  const [detailTrack, setDetailTrack] = useState<TrackRow | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [applyError, setApplyError] = useState<string | null>(null)
 
@@ -422,9 +535,24 @@ export default function Marketplace() {
               fit={fitById.get(track.id) ?? null}
               applied={appliedSet.has(track.id)}
               onApply={() => { setApplyError(null); setApplyTrack(track) }}
+              onView={() => setDetailTrack(track)}
             />
           ))}
         </div>
+      )}
+
+      {detailTrack && (
+        <TrackDetailModal
+          track={detailTrack}
+          applied={appliedSet.has(detailTrack.id)}
+          match={
+            candidate
+              ? computeMatch(candidate as unknown as CandidateProfile, detailTrack as unknown as DomainTrack)
+              : null
+          }
+          onClose={() => setDetailTrack(null)}
+          onApply={() => { const t = detailTrack; setDetailTrack(null); setApplyError(null); setApplyTrack(t) }}
+        />
       )}
 
       {applyTrack && (

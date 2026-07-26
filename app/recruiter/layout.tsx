@@ -14,6 +14,7 @@ const TABS = [
   { href: '/recruiter/applicants', label: 'Applicants' },
   { href: '/recruiter/mentees', label: 'Mentees' },
   { href: '/recruiter/assessment', label: 'AI Assessment' },
+  { href: '/recruiter/settings', label: 'Settings' },
 ]
 
 export default function RecruiterLayout({ children }: { children: React.ReactNode }) {
