@@ -189,12 +189,28 @@ export default function TrackAssistantConnected({
             data: { tracks: [] },
           }
         }
-        const compact = matched.map((t) => ({ title: t.title, org: t.org, id: t.id }))
-        const list = compact.map((t) => `${t.title} at ${t.org}`).join(', ')
+        // Rich rows so the model can answer duration/hours/skills/seats/fit and
+        // comparative questions ("longest", "most hours", "best fit") directly.
+        const profile = candidate ? toCandidateProfile(candidate) : null
+        const rich = matched.map((t) => ({
+          title: t.title,
+          org: t.org,
+          id: t.id,
+          durationWeeks: t.durationWeeks,
+          weeklyHours: t.weeklyHours,
+          intensity: t.intensity,
+          slaHours: t.slaHours,
+          seatsOpen: Math.max(0, t.cap - t.applicants),
+          skills: (t.requiredSkills ?? []).map((s) => s.name),
+          ...(profile ? { fitPercent: computeMatch(profile, toTrack(t)).overall } : {}),
+        }))
+        const list = rich
+          .map((t) => `${t.title} at ${t.org} (${t.durationWeeks}w, ${t.weeklyHours}h/wk, ${t.intensity}, ${t.seatsOpen} seats)`)
+          .join('; ')
         return {
           ok: true,
           summary: `Found ${matched.length} track${matched.length === 1 ? '' : 's'}${scope}: ${list}.`,
-          data: compact,
+          data: rich,
         }
     }
 
@@ -263,6 +279,8 @@ export default function TrackAssistantConnected({
           org: r.track.org,
           id: r.doc.id,
           overall: r.overall,
+          durationWeeks: r.track.durationWeeks,
+          intensity: r.track.intensity,
         }))
 
         return {
