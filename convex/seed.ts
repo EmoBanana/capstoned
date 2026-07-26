@@ -235,6 +235,7 @@ const ENROLLMENTS: SeedEnrollment[] = [
 export const run = internalMutation({
   args: {},
   handler: async (ctx) => {
+    for (const s of await ctx.db.query('sponsorships').collect()) await ctx.db.delete(s._id)
     for (const t of await ctx.db.query('tasks').collect()) await ctx.db.delete(t._id)
     for (const e of await ctx.db.query('enrollments').collect()) await ctx.db.delete(e._id)
     for (const a of await ctx.db.query('applications').collect()) await ctx.db.delete(a._id)
@@ -266,6 +267,7 @@ export const run = internalMutation({
     }
 
     let taskCount = 0
+    const enrollmentIdByName: Record<string, Id<'enrollments'>> = {}
     for (const e of ENROLLMENTS) {
       const enrollmentId = await ctx.db.insert('enrollments', {
         trackId: tbTrackId,
@@ -278,6 +280,7 @@ export const run = internalMutation({
         fit: e.fit,
         feedback: e.feedback,
       })
+      enrollmentIdByName[e.name] = enrollmentId
       let order = 0
       for (const t of e.tasks) {
         await ctx.db.insert('tasks', {
@@ -292,6 +295,20 @@ export const run = internalMutation({
       }
     }
 
-    return `Seeded ${ORGS.length} orgs, ${TRACKS.length} tracks, ${CANDIDATES.length} candidates, ${APPS.length} applications, ${ENROLLMENTS.length} enrollments, ${taskCount} tasks.`
+    // One standing micro-bond offer to the strongest mentee (John Doe).
+    await ctx.db.insert('sponsorships', {
+      enrollmentId: enrollmentIdByName['John Doe'],
+      candidateId: candIdByName['John Doe'],
+      orgName: 'Talentbank',
+      title: 'Early-Talent Micro-Bond',
+      type: 'milestone',
+      amount: 3000,
+      commitmentKind: 'contract',
+      commitmentMonths: 3,
+      status: 'offered',
+      createdAt: now,
+    })
+
+    return `Seeded ${ORGS.length} orgs, ${TRACKS.length} tracks, ${CANDIDATES.length} candidates, ${APPS.length} applications, ${ENROLLMENTS.length} enrollments, ${taskCount} tasks, 1 sponsorship.`
   },
 })

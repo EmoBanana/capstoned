@@ -4,7 +4,10 @@ import { vi } from 'vitest'
 import { getFunctionName } from 'convex/server'
 
 const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
-vi.mock('convex/react', () => ({ useQuery: (...a: unknown[]) => useQueryMock(...a) }))
+vi.mock('convex/react', () => ({
+  useQuery: (...a: unknown[]) => useQueryMock(...a),
+  useMutation: () => vi.fn(),
+}))
 
 import Mentees from '@/src/screens/Mentees'
 
@@ -27,7 +30,9 @@ const DATA = {
 beforeEach(() => {
   useQueryMock.mockImplementation((ref: unknown) => {
     const name = getFunctionName(ref as Parameters<typeof getFunctionName>[0])
-    return name.includes('enrollments') ? DATA : undefined
+    if (name.includes('enrollments')) return DATA
+    if (name.includes('sponsorships')) return null
+    return undefined
   })
 })
 

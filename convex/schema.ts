@@ -133,4 +133,21 @@ export default defineSchema({
     mentorNote: v.optional(v.string()),
     order: v.number(),
   }).index('by_enrollment', ['enrollmentId']),
+
+  // Micro-bond: a company sponsors a mentee for a milestone/period in exchange
+  // for a short commitment (contract or priority hiring).
+  sponsorships: defineTable({
+    enrollmentId: v.id('enrollments'),
+    candidateId: v.id('candidates'),
+    orgName: v.string(),
+    title: v.string(),
+    type: v.union(v.literal('milestone'), v.literal('period')),
+    amount: v.number(),
+    commitmentKind: v.union(v.literal('contract'), v.literal('priority-hiring')),
+    commitmentMonths: v.number(),
+    status: v.union(v.literal('offered'), v.literal('accepted'), v.literal('declined')),
+    createdAt: v.number(),
+  })
+    .index('by_enrollment', ['enrollmentId'])
+    .index('by_candidate', ['candidateId']),
 })

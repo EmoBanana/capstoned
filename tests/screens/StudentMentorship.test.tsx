@@ -35,7 +35,9 @@ beforeEach(() => {
   submitSpy.mockClear()
   useQueryMock.mockImplementation((ref: unknown) => {
     const name = getFunctionName(ref as Parameters<typeof getFunctionName>[0])
-    return name.includes('enrollments') ? DATA : undefined
+    if (name.includes('enrollments')) return DATA
+    if (name.includes('sponsorships')) return null
+    return undefined
   })
 })
 
@@ -63,5 +65,20 @@ describe('StudentMentorship', () => {
     expect(screen.getByRole('status')).toBeInTheDocument()
     await user.click(screen.getByRole('button', { name: /dismiss notification/i }))
     expect(screen.queryByRole('status')).not.toBeInTheDocument()
+  })
+
+  it('accepts a micro-bond offer via the mutation', async () => {
+    const user = userEvent.setup()
+    useQueryMock.mockImplementation((ref: unknown) => {
+      const name = getFunctionName(ref as Parameters<typeof getFunctionName>[0])
+      if (name.includes('enrollments')) return DATA
+      if (name.includes('sponsorships'))
+        return { id: 's1', orgName: 'Talentbank', title: 'Early-Talent Micro-Bond', type: 'milestone', amount: 3000, commitmentKind: 'contract', commitmentMonths: 3, status: 'offered' }
+      return undefined
+    })
+    render(<StudentMentorship />)
+    expect(screen.getByText(/Micro-bond offer/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /accept offer/i }))
+    expect(submitSpy).toHaveBeenCalledWith({ sponsorshipId: 's1', status: 'accepted' })
   })
 })

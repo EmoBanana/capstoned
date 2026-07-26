@@ -63,6 +63,8 @@ function StatBlock({ label, value, suffix, bar }: { label: string; value: string
 export default function StudentMentorship({ onNavigate }: { onNavigate?: (id: string) => void }) {
   const data = useQuery(api.enrollments.myMentorship)
   const submitTask = useMutation(api.tasks.submit)
+  const sponsorship = useQuery(api.sponsorships.mine)
+  const respondSponsor = useMutation(api.sponsorships.respond)
   const [banner, setBanner] = useState<string | null>(null)
 
   if (data === undefined) {
@@ -132,6 +134,41 @@ export default function StudentMentorship({ onNavigate }: { onNavigate?: (id: st
           </div>
         </div>
       </Card>
+
+      {sponsorship && sponsorship.status === 'offered' && (
+        <Card className="mt-5 border-gold/40 bg-gold-soft/40 p-5">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <div className="flex items-center gap-2">
+                <Eyebrow>Micro-bond offer</Eyebrow>
+                <Badge tone="gold">New</Badge>
+              </div>
+              <p className="mt-2 max-w-xl text-sm leading-relaxed text-ink">
+                <span className="font-bold">{sponsorship.orgName}</span> offers you a{' '}
+                <span className="font-bold tabular-nums">RM {sponsorship.amount.toLocaleString()}</span>{' '}
+                {sponsorship.title} — in exchange for a {sponsorship.commitmentMonths}-month{' '}
+                {sponsorship.commitmentKind === 'contract' ? 'contract' : 'priority-hiring commitment'} once the track completes.
+              </p>
+            </div>
+            <div className="flex shrink-0 gap-2">
+              <Button size="sm" onClick={() => void respondSponsor({ sponsorshipId: sponsorship.id as Id<'sponsorships'>, status: 'accepted' })}>
+                Accept offer
+              </Button>
+              <Button size="sm" variant="secondary" onClick={() => void respondSponsor({ sponsorshipId: sponsorship.id as Id<'sponsorships'>, status: 'declined' })}>
+                Decline
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+      {sponsorship && sponsorship.status === 'accepted' && (
+        <Card className="mt-5 border-success/30 bg-success-soft p-4">
+          <p className="text-sm font-medium text-success-ink">
+            ✓ You accepted {sponsorship.orgName}'s micro-bond (RM {sponsorship.amount.toLocaleString()},{' '}
+            {sponsorship.commitmentMonths}-month {sponsorship.commitmentKind}).
+          </p>
+        </Card>
+      )}
 
       {banner && (
         <div className="mt-5 flex items-start justify-between gap-4 rounded-[2px] border border-success/30 bg-success-soft px-4 py-3" role="status" aria-live="polite">
