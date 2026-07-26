@@ -36,11 +36,6 @@ export function Hero({
 }) {
   return (
     <section className="relative overflow-hidden border-b border-line bg-cream">
-      {/* subtle paper panel behind the visual side, desktop only */}
-      <div
-        className="pointer-events-none absolute inset-y-0 right-0 hidden w-[42%] bg-paper lg:block"
-        aria-hidden="true"
-      />
       <div className="relative mx-auto grid max-w-7xl items-center gap-12 px-6 py-20 sm:py-24 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8 lg:py-28">
         {/* Left — message */}
         <div>
@@ -182,13 +177,6 @@ export function Hero({
             </div>
           </div>
 
-          {/* floating evidence chip */}
-          <div className="absolute -bottom-4 -left-4 hidden rounded-[2px] border border-line-strong bg-ink px-4 py-3 text-cream sm:block">
-            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-cream/60">
-              Decision signal
-            </p>
-            <p className="mt-0.5 text-sm font-semibold">Evidence, not a hunch.</p>
-          </div>
         </div>
       </div>
     </section>
