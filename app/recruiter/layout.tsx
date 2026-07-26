@@ -11,7 +11,7 @@ import NotificationBell from '@/src/components/NotificationBell'
 
 const TABS = [
   { href: '/recruiter/dashboard', label: 'Dashboard' },
-  { href: '/recruiter/new-track', label: 'New Track' },
+  { href: '/recruiter/new-track', label: 'Mentorship Track' },
   { href: '/recruiter/applicants', label: 'Applicants' },
   { href: '/recruiter/mentees', label: 'Mentees' },
   { href: '/recruiter/assessment', label: 'AI Assessment' },
