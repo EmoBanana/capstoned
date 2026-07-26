@@ -125,6 +125,7 @@ export const forOrgManage = query({
         return {
           id: t._id as string,
           title: t.title,
+          department: t.department,
           summary: t.summary,
           status: t.status,
           intensity: t.intensity,
@@ -133,6 +134,7 @@ export const forOrgManage = query({
           slaHours: t.slaHours,
           cap: t.cap,
           deliverables: t.deliverables,
+          skills: t.requiredSkills.map((s) => s.name),
           applicants: t.applicants + apps.length,
           enrolled: enrollments.length,
           avgFit,
@@ -154,6 +156,7 @@ export const update = mutation({
   args: {
     trackId: v.id('tracks'),
     title: v.optional(v.string()),
+    department: v.optional(v.string()),
     summary: v.optional(v.string()),
     cap: v.optional(v.number()),
     slaHours: v.optional(v.number()),
@@ -181,6 +184,7 @@ export const update = mutation({
 
     await ctx.db.patch(a.trackId, {
       title: a.title ?? track.title,
+      department: a.department ?? track.department,
       summary: a.summary ?? track.summary,
       cap: a.cap ?? track.cap,
       slaHours: a.slaHours ?? track.slaHours,
@@ -189,10 +193,14 @@ export const update = mutation({
       intensity: a.intensity ?? track.intensity,
       requiredSkills: a.requiredSkills ?? track.requiredSkills,
       interestTags: a.requiredSkills ? a.requiredSkills.map((s) => s.name) : track.interestTags,
+      domainTags: a.department ? [a.department.split('·')[0].trim()] : track.domainTags,
       deliverables: deliverables ?? track.deliverables,
       objectives: deliverables ?? track.objectives,
       milestones,
     })
+    // Note: edits touch only the track document. Existing enrollments snapshot
+    // their own totalWeeks + tasks at enrolment time, so mentees already in the
+    // program are unaffected — changes apply to future applicants/mentees.
   },
 })
 

@@ -19,6 +19,7 @@ type Intensity = 'light' | 'moderate' | 'intense'
 type Program = {
   id: string
   title: string
+  department: string
   summary: string
   status: Status
   intensity: Intensity
@@ -27,6 +28,7 @@ type Program = {
   slaHours: number
   cap: number
   deliverables: string[]
+  skills: string[]
   applicants: number
   enrolled: number
   avgFit: number | null
@@ -145,6 +147,8 @@ function TrackEditModal({
   const updateTrack = useMutation(api.tracks.update)
   const dialogRef = useDialog<HTMLDivElement>(onClose)
   const [title, setTitle] = useState(program.title)
+  const [department, setDepartment] = useState(program.department)
+  const [skillsText, setSkillsText] = useState(program.skills.join(', '))
   const [summary, setSummary] = useState(program.summary)
   const [cap, setCap] = useState(String(program.cap))
   const [weeklyHours, setWeeklyHours] = useState(String(program.weeklyHours))
@@ -166,12 +170,14 @@ function TrackEditModal({
       await updateTrack({
         trackId: program.id as Id<'tracks'>,
         title: title.trim(),
+        department: department.trim(),
         summary: summary.trim(),
         cap: Math.max(1, Math.round(Number(cap) || program.cap)),
         weeklyHours: Math.max(1, Math.round(Number(weeklyHours) || program.weeklyHours)),
         durationWeeks: Math.max(1, Math.round(Number(durationWeeks) || program.durationWeeks)),
         slaHours: Math.max(1, Math.round(Number(slaHours) || program.slaHours)),
         intensity,
+        requiredSkills: skillsText.split(',').map((s) => s.trim()).filter(Boolean).map((name) => ({ name, weight: 1, targetLevel: 80 })),
         deliverables: deliverables.map((d) => d.trim()).filter(Boolean),
       })
       onClose()
@@ -198,7 +204,9 @@ function TrackEditModal({
         </div>
         <div className="space-y-4 px-6 py-5">
           <Field label="Title" required><Input value={title} onChange={(e) => setTitle(e.target.value)} /></Field>
+          <Field label="Department / function"><Input value={department} onChange={(e) => setDepartment(e.target.value)} placeholder="e.g. Engineering · Web Platform" /></Field>
           <Field label="Summary"><Textarea rows={3} value={summary} onChange={(e) => setSummary(e.target.value)} /></Field>
+          <Field label="Required skills" hint="comma-separated — drives matching"><Input value={skillsText} onChange={(e) => setSkillsText(e.target.value)} placeholder="React, TypeScript, Design Systems" /></Field>
           <div className="grid grid-cols-2 gap-4">
             <Field label="Seat cap"><Input type="number" min={1} value={cap} onChange={(e) => setCap(e.target.value)} /></Field>
             <Field label="Interview SLA (hrs)"><Input type="number" min={1} value={slaHours} onChange={(e) => setSlaHours(e.target.value)} /></Field>
@@ -226,6 +234,8 @@ function TrackEditModal({
               <Button variant="secondary" size="sm" onClick={addDeliverable}>+ Add deliverable</Button>
             </div>
           </Field>
+
+          <p className="text-xs text-ink-faint">Edits apply to future applicants and mentees. Mentees already enrolled keep their current plan, tasks, and progress.</p>
         </div>
         <div className="flex items-center justify-end gap-3 border-t border-line px-6 py-4">
           {error && <span className="mr-auto text-xs font-medium text-danger">{error}</span>}
