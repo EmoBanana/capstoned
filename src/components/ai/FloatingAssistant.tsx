@@ -149,23 +149,31 @@ export default function FloatingAssistant() {
           ref={panelRef}
           role="dialog"
           aria-label="Assistant"
-          className="fixed bottom-20 right-5 z-50 flex w-[calc(100vw-2.5rem)] max-w-[380px] flex-col overflow-hidden border border-line-strong bg-paper rounded-[2px] shadow-[0_8px_30px_rgba(26,26,26,0.12)] h-[560px] max-h-[70vh]"
+          className="fixed bottom-20 right-5 z-50 flex w-[min(440px,calc(100vw-2.5rem))] flex-col overflow-hidden border border-line-strong bg-paper rounded-[2px] shadow-[0_8px_30px_rgba(26,26,26,0.12)] h-[640px] max-h-[80vh]"
         >
-          <header className="flex shrink-0 items-center justify-between border-b border-line bg-cream px-4 py-3">
-            <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-soft">
-              Assistant
-            </span>
+          <header className="flex shrink-0 items-center justify-between gap-3 border-b border-line bg-cream px-4 py-3">
+            <div className="flex min-w-0 items-center gap-2.5">
+              <span className="shrink-0 text-gold">
+                <SparkChatIcon className="h-5 w-5" />
+              </span>
+              <div className="min-w-0">
+                <span className="block text-[11px] font-bold uppercase tracking-[0.08em] text-ink-soft">
+                  CapStoned Assistant
+                </span>
+                <span className="block text-xs text-ink-faint">Here to help</span>
+              </div>
+            </div>
             <button
               type="button"
               onClick={handleToggle}
               aria-label="Close assistant"
-              className="inline-flex items-center justify-center border border-transparent p-1 text-ink-faint rounded-[2px] transition-colors duration-150 hover:border-line-strong hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
+              className="inline-flex shrink-0 items-center justify-center border border-transparent p-1 text-ink-faint rounded-[2px] transition-colors duration-150 hover:border-line-strong hover:text-ink focus:outline-none focus-visible:ring-2 focus-visible:ring-ink/40"
             >
               <CloseIcon className="h-4 w-4" />
             </button>
           </header>
           <div className="min-h-0 flex-1 overflow-hidden">
-            <TrackAssistantConnected className="h-full" />
+            <TrackAssistantConnected className="h-full" embedded />
           </div>
         </div>
       )}

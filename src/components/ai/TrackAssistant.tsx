@@ -4,7 +4,9 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import gsap from 'gsap'
 import type { ChatMessage } from '../../lib/ai'
 import {
+  basePromptForRole,
   STUB_EXECUTORS,
+  type AssistantRole,
   type ParsedAction,
   type ToolExecutors,
   type ToolResult,
@@ -31,18 +33,45 @@ const useIso = typeof window !== 'undefined' ? useLayoutEffect : useEffect
 /*  whose search_tracks reads the live `tracks.list` query.           */
 /* ------------------------------------------------------------------ */
 
-const BASE_SYSTEM_PROMPT =
-  'You are the CapStoned Track Assistant, helping people create, find, recommend, and ' +
-  'apply to mentorship tracks. Be warm and concise, and reply in plain text with no markdown. ' +
-  'When the user asks you to create, search, or recommend a track, use the matching tool. ' +
-  'You can also apply to a track on the user\'s behalf when they ask.'
+/* Role-specific copy. A Candidate assistant discovers, matches, and applies;
+ * a Company assistant authors and manages tracks. No em dashes, no asides. */
 
-const STARTERS: readonly string[] = [
-  'Create an 8-week backend track that needs Go and SQL',
-  'Find tracks that use React',
-  'Recommend a track for someone who loves data',
-  'Apply me to the Stripe track',
-]
+const STARTERS_BY_ROLE: Record<AssistantRole, readonly string[]> = {
+  candidate: [
+    'Find tracks that use React',
+    'Recommend a track for someone who loves data',
+    'What track fits an owl work style',
+    'Apply me to the Stripe track',
+  ],
+  company: [
+    'Create an 8-week backend track that needs Go and SQL',
+    'Draft a 6-week product design track',
+    'Search open tracks that use React',
+    'Find tracks in the data domain',
+  ],
+}
+
+const HEADLINE_BY_ROLE: Record<AssistantRole, string> = {
+  candidate: 'Discover, match, and apply to tracks',
+  company: 'Author and manage mentorship tracks',
+}
+
+const EMPTY_TITLE_BY_ROLE: Record<AssistantRole, string> = {
+  candidate: 'Tell me what you are looking for.',
+  company: 'Tell me what to build.',
+}
+
+const EMPTY_BODY_BY_ROLE: Record<AssistantRole, string> = {
+  candidate:
+    'I can find open tracks, recommend a fit from your work style, and apply for you. Just ask in plain language.',
+  company:
+    'I can author a new mentorship track and search open tracks. Just ask in plain language.',
+}
+
+const PLACEHOLDER_BY_ROLE: Record<AssistantRole, string> = {
+  candidate: 'e.g. Find a React track for me',
+  company: 'e.g. Create a 6-week React track',
+}
 
 const GENERIC_ERROR =
   'The assistant is unavailable right now. Please try again in a moment.'
@@ -54,11 +83,17 @@ interface AgentResponse {
   action: ParsedAction | null
 }
 
-async function postAgent(messages: ChatMessage[], signal: AbortSignal): Promise<AgentResponse> {
+async function postAgent(
+  messages: ChatMessage[],
+  role: AssistantRole,
+  signal: AbortSignal,
+): Promise<AgentResponse> {
   const res = await fetch('/api/agent', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ messages, system: BASE_SYSTEM_PROMPT }),
+    // Send the role AND its base prompt so the route scopes the tool list to
+    // this persona. The route re-derives tools from the role regardless.
+    body: JSON.stringify({ messages, system: basePromptForRole(role), role }),
     signal,
   })
   if (!res.ok) {
@@ -180,7 +215,7 @@ function ChatBubble({ role, content }: { role: 'user' | 'assistant'; content: st
   return (
     <div className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
       <div
-        className={`max-w-[85%] rounded-[2px] border px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+        className={`max-w-[85%] min-w-0 rounded-[2px] border px-3.5 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words [overflow-wrap:anywhere] ${
           isUser ? 'border-ink bg-ink text-cream' : 'border-line-strong bg-paper text-ink'
         }`}
       >
@@ -203,19 +238,19 @@ function ToolCard({
 }) {
   return (
     <div className="flex justify-start">
-      <div className="max-w-[90%] rounded-[2px] border border-line-strong bg-cream px-3.5 py-2.5">
-        <div className="mb-1.5 flex items-center gap-2">
+      <div className="max-w-[90%] min-w-0 rounded-[2px] border border-line-strong bg-cream px-3.5 py-2.5">
+        <div className="mb-1.5 flex flex-wrap items-center gap-x-2 gap-y-1">
           <span className={result.ok ? 'text-gold' : 'text-danger'}>
             <ToolIcon />
           </span>
-          <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-soft">
+          <span className="text-[11px] font-bold uppercase tracking-[0.08em] text-ink-soft break-words">
             Ran {tool}
           </span>
-          <Badge tone={isStub ? 'slate' : 'success'} className="ml-1">
-            {isStub ? 'Stub' : 'Live'}
-          </Badge>
+          <Badge tone={isStub ? 'slate' : 'success'}>{isStub ? 'Stub' : 'Live'}</Badge>
         </div>
-        <p className="text-sm leading-relaxed text-ink">{result.summary}</p>
+        <p className="text-sm leading-relaxed text-ink whitespace-pre-wrap break-words [overflow-wrap:anywhere]">
+          {result.summary}
+        </p>
       </div>
     </div>
   )
@@ -226,9 +261,16 @@ function ToolCard({
 export default function TrackAssistant({
   executors = STUB_EXECUTORS,
   className = '',
+  role = 'candidate',
+  showHeader = true,
 }: {
   executors?: ToolExecutors
   className?: string
+  /** The signed-in user's persona. Drives the copy, the starter prompts, and
+   *  the role sent to /api/agent so the model only sees this role's tools. */
+  role?: AssistantRole
+  /** Hide the internal header when embedded in a panel that supplies its own. */
+  showHeader?: boolean
 }) {
   const [turns, setTurns] = useState<Turn[]>([])
   const [draft, setDraft] = useState('')
@@ -303,7 +345,7 @@ export default function TrackAssistant({
 
     try {
       // Turn 1: does the model want to act, or just reply?
-      const first = await postAgent(toApiMessages(afterUser), controller.signal)
+      const first = await postAgent(toApiMessages(afterUser), role, controller.signal)
 
       if (!first.action) {
         setTurns([...afterUser, { kind: 'assistant', content: first.text }])
@@ -325,7 +367,7 @@ export default function TrackAssistant({
       setTurns([...withTool, { kind: 'pending' }])
 
       // Turn 2: feed the result back so the model writes the final reply.
-      const second = await postAgent(toApiMessages(withTool), controller.signal)
+      const second = await postAgent(toApiMessages(withTool), role, controller.signal)
       setTurns([...withTool, { kind: 'assistant', content: second.text }])
     } catch (err) {
       if (controller.signal.aborted) {
@@ -360,43 +402,47 @@ export default function TrackAssistant({
 
   const isEmpty = turns.length === 0
   const usingStubs = executors === STUB_EXECUTORS
+  const starters = STARTERS_BY_ROLE[role]
 
   return (
-    <Card className={`flex h-full min-h-[32rem] flex-col overflow-hidden ${className}`}>
+    <Card className={`flex h-full min-h-0 flex-col overflow-hidden ${className}`}>
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-line bg-paper px-5 py-4">
-        <div className="flex items-center gap-2.5">
-          <span className="text-gold">
-            <ToolIcon />
-          </span>
-          <div>
-            <Eyebrow>AI Track Assistant</Eyebrow>
-            <p className="mt-0.5 text-sm font-bold tracking-tight text-ink">
-              Create, find, and recommend tracks
-            </p>
+      {showHeader && (
+        <div className="flex items-center justify-between gap-3 border-b border-line bg-paper px-5 py-4">
+          <div className="flex min-w-0 items-center gap-2.5">
+            <span className="shrink-0 text-gold">
+              <ToolIcon />
+            </span>
+            <div className="min-w-0">
+              <Eyebrow>AI Track Assistant</Eyebrow>
+              <p className="mt-0.5 text-sm font-bold tracking-tight text-ink">
+                {HEADLINE_BY_ROLE[role]}
+              </p>
+            </div>
           </div>
+          <Badge tone={usingStubs ? 'slate' : 'gold'} className="shrink-0">
+            {usingStubs ? 'Demo' : 'Live'}
+          </Badge>
         </div>
-        <Badge tone={usingStubs ? 'slate' : 'gold'}>{usingStubs ? 'Demo' : 'Live'}</Badge>
-      </div>
+      )}
 
       {/* Transcript */}
       <div
         ref={scrollRef}
-        className="flex-1 space-y-3 overflow-y-auto px-5 py-5"
+        className="min-h-0 flex-1 space-y-3 overflow-y-auto px-5 py-5"
         aria-live="polite"
         aria-atomic="false"
       >
         {isEmpty ? (
-          <div className="flex h-full flex-col items-center justify-center text-center">
+          <div className="flex h-full flex-col items-center justify-center px-2 text-center">
             <span className="mb-3 flex h-11 w-11 items-center justify-center rounded-[2px] border border-line-strong bg-paper text-gold">
               <ToolIcon />
             </span>
             <h3 className="text-base font-bold tracking-tight text-ink">
-              Tell me what to do with tracks.
+              {EMPTY_TITLE_BY_ROLE[role]}
             </h3>
             <p className="mt-2 max-w-sm text-sm leading-relaxed text-ink-soft">
-              I can create a new mentorship track, search existing ones, or recommend a
-              fit. Just ask in plain language.
+              {EMPTY_BODY_BY_ROLE[role]}
             </p>
           </div>
         ) : (
@@ -441,7 +487,7 @@ export default function TrackAssistant({
       {/* Suggested starters */}
       {isEmpty && !error && (
         <div className="flex flex-wrap gap-2 px-5 pb-3">
-          {STARTERS.map((s) => (
+          {starters.map((s) => (
             <button
               key={s}
               type="button"
@@ -463,7 +509,7 @@ export default function TrackAssistant({
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={handleKeyDown}
             rows={1}
-            placeholder="e.g. Create a 6-week React track…"
+            placeholder={PLACEHOLDER_BY_ROLE[role]}
             aria-label="Message the Track Assistant"
             className={`${inputClass} max-h-40 resize-none leading-relaxed`}
           />

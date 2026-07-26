@@ -15,17 +15,37 @@
 /* ------------------------------------------------------------------ */
 
 /* ================================================================== */
+/*  Roles                                                              */
+/* ================================================================== */
+
+/** The assistant's two personas. The signed-in user's account role maps
+ *  to exactly one of these, and it decides which tools and prompt text
+ *  the assistant may use. `student` -> Candidate, `recruiter` -> Company. */
+export type AssistantRole = 'candidate' | 'company'
+
+/** Map the raw account role to an assistant persona. Anything other than a
+ *  recruiter, including a still-loading or signed-out state, defaults to the
+ *  read-only Candidate persona so a Company set is never exposed by accident. */
+export function assistantRoleFromUserRole(
+  role: 'student' | 'recruiter' | null | undefined,
+): AssistantRole {
+  return role === 'recruiter' ? 'company' : 'candidate'
+}
+
+/* ================================================================== */
 /*  Tool registry                                                      */
 /* ================================================================== */
 
 /**
- * A tool the model may invoke. `parameters` maps each arg name to a
- * short human description (used verbatim in the system prompt); `example`
- * is a concrete args object shown to the model so it copies the shape.
+ * A tool the model may invoke. `roles` lists the persona(s) allowed to use
+ * it. `parameters` maps each arg name to a short human description (used
+ * verbatim in the system prompt); `example` is a concrete args object shown
+ * to the model so it copies the shape.
  */
 export interface ToolDef {
   name: string
   description: string
+  roles: AssistantRole[]
   parameters: Record<string, string>
   example: object
 }
@@ -35,6 +55,7 @@ export const TOOLS: ToolDef[] = [
     name: 'create_track',
     description:
       'Create a new mentorship track as a draft when the user asks to make, add, or set up a track.',
+    roles: ['company'],
     parameters: {
       title: 'string — the track name',
       skills: 'string[] — skills/technologies the track requires',
@@ -56,6 +77,7 @@ export const TOOLS: ToolDef[] = [
     name: 'search_tracks',
     description:
       'Search existing open tracks when the user wants to find, browse, or filter tracks. Provide any of the fields; leave the rest out.',
+    roles: ['candidate', 'company'],
     parameters: {
       query: 'string — optional free-text search over title/summary',
       skill: 'string — an optional skill to filter by, e.g. "React"',
@@ -67,6 +89,7 @@ export const TOOLS: ToolDef[] = [
     name: 'recommend_track',
     description:
       "Recommend a single best-fit track when the user asks for a suggestion based on their interests or 12-Animals work-style archetype.",
+    roles: ['candidate'],
     parameters: {
       interests: 'string[] — the user\'s stated interests, if any',
       animal: 'string — the user\'s 12-Animals archetype key, e.g. "owl", if known',
@@ -77,6 +100,7 @@ export const TOOLS: ToolDef[] = [
     name: 'apply_to_track',
     description:
       "Apply to an open track on the user's behalf when they ask to apply to, sign up for, or join a track. Identify the track by the company or track name they mention.",
+    roles: ['candidate'],
     parameters: {
       track: 'string — the company or track name to apply to',
       note: 'string — an optional 1-2 sentence motivation for applying',
@@ -88,17 +112,49 @@ export const TOOLS: ToolDef[] = [
   },
 ]
 
+/** The tools a given persona is allowed to use. Used to build both the
+ *  executor set on the client and the tool list in the system prompt, so
+ *  the model is never even told about tools outside the user's role. */
+export function toolsForRole(role: AssistantRole): ToolDef[] {
+  return TOOLS.filter((tool) => tool.roles.includes(role))
+}
+
 /* ================================================================== */
 /*  System prompt                                                      */
 /* ================================================================== */
 
+/** Base persona text for a Candidate. Discovery, matching, and applying
+ *  only. Never authors tracks, never reaches company-private data. */
+export const CANDIDATE_BASE_PROMPT =
+  'You are the CapStoned assistant for a Candidate. You help the candidate understand their ' +
+  'work style, discover open mentorship tracks, get data-backed recommendations, and apply to a ' +
+  'track on their behalf when they ask. Be warm and concise, and reply in plain text with no ' +
+  'markdown. You never create or edit tracks, and you never surface other people or ' +
+  'company-private data. If the user asks for a Company task such as creating a track, explain ' +
+  'that it is only available on a Company account.'
+
+/** Base persona text for a Company. Authoring and managing tracks only.
+ *  Never applies on anyone's behalf. */
+export const COMPANY_BASE_PROMPT =
+  'You are the CapStoned assistant for a Company. You help the recruiter author and manage ' +
+  'mentorship tracks and search open tracks. Be warm and concise, and reply in plain text with ' +
+  'no markdown. You never apply to tracks on anyone\'s behalf and you never act as a candidate. ' +
+  'If the user asks for a Candidate task such as applying to a track, explain that it is only ' +
+  'available on a Candidate account.'
+
+/** The role-specific base prompt. Defaults to the Candidate persona. */
+export function basePromptForRole(role: AssistantRole): string {
+  return role === 'company' ? COMPANY_BASE_PROMPT : CANDIDATE_BASE_PROMPT
+}
+
 /**
- * Append tool-calling instructions to a base system prompt. The result
- * tells the model exactly how and when to emit a ```action block, lists
- * every tool with its parameters, and shows a concrete example per tool.
+ * Append tool-calling instructions to a base system prompt, advertising
+ * ONLY the tools passed in. The result tells the model exactly how and when
+ * to emit a ```action block, lists each allowed tool with its parameters,
+ * and shows a concrete example per tool.
  */
-export function buildToolSystemPrompt(base: string): string {
-  const toolLines = TOOLS.map((tool) => {
+export function buildToolSystemPrompt(base: string, tools: ToolDef[]): string {
+  const toolLines = tools.map((tool) => {
     const params = Object.entries(tool.parameters)
       .map(([name, desc]) => `      - ${name}: ${desc}`)
       .join('\n')

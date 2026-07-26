@@ -10,7 +10,14 @@
 // parses the model's reply with parseAction. No simulated fallback — if
 // the backend is down it returns a real 503 so failures stay visible.
 
-import { buildToolSystemPrompt, parseAction, type ParsedAction } from '../../../src/lib/ai-tools'
+import {
+  basePromptForRole,
+  buildToolSystemPrompt,
+  parseAction,
+  toolsForRole,
+  type AssistantRole,
+  type ParsedAction,
+} from '../../../src/lib/ai-tools'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -31,6 +38,16 @@ interface AgentRequestBody {
   messages?: ChatMessage[]
   system?: string
   temperature?: number
+  /** The signed-in user's assistant persona. Scopes which tools the model
+   *  is told about. Anything other than 'company' is treated as Candidate. */
+  role?: string
+}
+
+/** Narrow the client-supplied role to a known persona, defaulting to the
+ *  read-only Candidate set so a Company tool set is never exposed by a bad
+ *  or missing value. */
+function resolveRole(role: string | undefined): AssistantRole {
+  return role === 'company' ? 'company' : 'candidate'
 }
 
 const JSON_HEADERS = { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-cache' }
@@ -47,10 +64,6 @@ function providerOrder(): Provider[] {
   return resolveProvider() === 'groq' ? ['groq'] : ['ollama']
 }
 
-const DEFAULT_BASE_PROMPT =
-  'You are the CapStoned assistant. You help staff manage mentorship tracks. ' +
-  'Be concise and friendly, and reply in plain text (no markdown).'
-
 export async function POST(req: Request): Promise<Response> {
   let body: AgentRequestBody
   try {
@@ -59,12 +72,16 @@ export async function POST(req: Request): Promise<Response> {
     return json({ error: 'Invalid JSON body' }, 400)
   }
 
-  const { messages = [], system, temperature = 0.4 } = body
+  const { messages = [], system, temperature = 0.4, role } = body
   if (!Array.isArray(messages) || messages.length === 0) {
     return json({ error: '`messages` is required' }, 400)
   }
 
-  const systemPrompt = buildToolSystemPrompt(system ?? DEFAULT_BASE_PROMPT)
+  // Build the prompt from ONLY the tools this role may use, so the model is
+  // never told about actions outside the user's persona.
+  const assistantRole = resolveRole(role)
+  const base = system ?? basePromptForRole(assistantRole)
+  const systemPrompt = buildToolSystemPrompt(base, toolsForRole(assistantRole))
   const fullMessages: ChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages]
 
   for (const provider of providerOrder()) {

@@ -10,7 +10,12 @@ import {
   type CandidateDoc,
   type TrackDoc,
 } from '@/src/lib/convex-adapters'
-import { STUB_EXECUTORS, type ToolExecutors, type ToolResult } from '@/src/lib/ai-tools'
+import {
+  assistantRoleFromUserRole,
+  type AssistantRole,
+  type ToolExecutors,
+  type ToolResult,
+} from '@/src/lib/ai-tools'
 import TrackAssistant from './TrackAssistant'
 
 /* ------------------------------------------------------------------ */
@@ -18,21 +23,40 @@ import TrackAssistant from './TrackAssistant'
 /*                                                                     */
 /*  Reads Session B's live Convex data (api.tracks.list +              */
 /*  api.candidates.current) and injects REAL, data-backed executors    */
-/*  into <TrackAssistant/> via its `executors` prop. search_tracks     */
-/*  filters the live tracks; recommend_track runs Session A's weighted  */
-/*  decision matrix (computeMatch) against the signed-in candidate.    */
-/*  create_track intentionally stays on the STUB executor — Session B  */
-/*  has not shipped a `tracks.create` mutation, so we do NOT fabricate  */
-/*  persistence.                                                       */
+/*  into <TrackAssistant/> via its `executors` prop, ROLE-SCOPED to the */
+/*  signed-in user. A Candidate gets search_tracks, recommend_track,    */
+/*  and apply_to_track; a Company gets create_track and search_tracks.  */
+/*  create_track publishes a real track via the Convex `tracks.create`  */
+/*  mutation. Any tool outside the persona is wired to a refusing       */
+/*  executor, so a cross-role action is refused, never executed.        */
 /*                                                                     */
-/*  The executors themselves guard against `undefined` (still-loading) */
-/*  query data, so this component renders immediately.                 */
+/*  The executors themselves guard against `undefined` still-loading    */
+/*  query data, so this component renders immediately. While the role   */
+/*  is loading it defaults to the read-only Candidate set.              */
 /* ------------------------------------------------------------------ */
 
 /* ---- strict arg-narrowing helpers (no `any`) --------------------- */
 
 function asString(value: unknown): string {
   return typeof value === 'string' ? value : ''
+}
+
+function asNumber(value: unknown, fallback: number): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value === 'string') {
+    const n = Number(value)
+    if (Number.isFinite(n)) return n
+  }
+  return fallback
+}
+
+type Intensity = 'light' | 'moderate' | 'intense'
+
+/** Coerce the model's free-text intensity to the mutation's literal union. */
+function asIntensity(value: unknown): Intensity {
+  const v = asString(value).trim().toLowerCase()
+  if (v === 'light' || v === 'intense') return v
+  return 'moderate'
 }
 
 function asStringArray(value: unknown): string[] {
@@ -78,21 +102,80 @@ function trackMatches(track: TrackDoc, needle: string): boolean {
 
 /* ------------------------------------------------------------------ */
 
-export default function TrackAssistantConnected({ className }: { className?: string }) {
+export default function TrackAssistantConnected({
+  className,
+  embedded = false,
+}: {
+  className?: string
+  /** When embedded in the floating panel the panel supplies its own header,
+   *  so the internal one is hidden to avoid a doubled header. */
+  embedded?: boolean
+}) {
   const trackData = useQuery(api.tracks.list) as TrackDoc[] | undefined
   const candidate = useQuery(api.candidates.current) as CandidateDoc | null | undefined
   const myTrackIds = useQuery(api.applications.myTrackIds) as string[] | undefined
+  const user = useQuery(api.users.currentUser)
   const apply = useMutation(api.applications.apply)
+  const createTrack = useMutation(api.tracks.create)
+
+  // Loading / signed-out defaults to the read-only Candidate persona, never
+  // the Company set, so Company tools are only ever exposed to a recruiter.
+  const role: AssistantRole = assistantRoleFromUserRole(user?.role)
 
   const executors = useMemo<ToolExecutors>(() => {
-    return {
-      ...STUB_EXECUTORS,
+    // Defense in depth: a tool the persona may NOT use gets a refusing
+    // executor, so even if the model emits a disallowed action it is refused,
+    // never executed.
+    const refuseForCandidate = async (): Promise<ToolResult> => ({
+      ok: false,
+      summary: 'That is a Company action and is not available on a Candidate account.',
+    })
+    const refuseForCompany = async (): Promise<ToolResult> => ({
+      ok: false,
+      summary: 'That is a Candidate action and is not available on a Company account.',
+    })
 
-      // create_track: KEEP the stub — no `tracks.create` mutation exists yet.
-      create_track: STUB_EXECUTORS.create_track,
+    // create_track: REAL — publishes a track via the Convex `tracks.create`
+    // mutation under the recruiter's own company. Company personas only.
+    const createTrackExec = async (args: Record<string, unknown>): Promise<ToolResult> => {
+      const title = asString(args.title).trim() || 'Untitled Track'
+      const skills = asStringArray(args.skills)
+      const durationWeeks = asNumber(args.durationWeeks, 6)
+      const weeklyHours = asNumber(args.weeklyHours, 8)
+      const intensity = asIntensity(args.intensity)
+      const summary = asString(args.description).trim()
+      const requiredSkills = skills.map((name) => ({ name, weight: 1, targetLevel: 3 }))
+      try {
+        await createTrack({
+          title,
+          department: '',
+          summary: summary || `A ${durationWeeks}-week ${intensity} track.`,
+          intensity,
+          durationWeeks,
+          weeklyHours,
+          cap: 10,
+          slaHours: 48,
+          deliverables: [],
+          requiredSkills,
+        })
+      } catch {
+        return {
+          ok: false,
+          summary:
+            'I could not publish that track. Set up your company profile first, then try again.',
+        }
+      }
+      const skillText = skills.length > 0 ? ` requiring ${skills.join(', ')}` : ''
+      return {
+        ok: true,
+        summary: `Published "${title}": ${durationWeeks} weeks, ${weeklyHours} h/week, ${intensity}${skillText}.`,
+        data: { title, skills, durationWeeks, weeklyHours, intensity, status: 'open' },
+      }
+    }
 
-      // search_tracks: filter the LIVE tracks list.
-      async search_tracks(args): Promise<ToolResult> {
+    // search_tracks: filter the LIVE tracks list. Shared by both personas —
+    // it only reads public open tracks.
+    const searchTracksExec = async (args: Record<string, unknown>): Promise<ToolResult> => {
         if (trackData === undefined) {
           return { ok: false, summary: 'Track data is still loading, try again in a moment.' }
         }
@@ -113,10 +196,10 @@ export default function TrackAssistantConnected({ className }: { className?: str
           summary: `Found ${matched.length} track${matched.length === 1 ? '' : 's'}${scope}: ${list}.`,
           data: compact,
         }
-      },
+    }
 
-      // recommend_track: rank the LIVE tracks by the weighted decision matrix.
-      async recommend_track(args): Promise<ToolResult> {
+    // recommend_track: rank the LIVE tracks by the weighted decision matrix.
+    const recommendTrackExec = async (args: Record<string, unknown>): Promise<ToolResult> => {
         if (trackData === undefined || candidate === undefined) {
           return { ok: false, summary: 'Track data is still loading, try again in a moment.' }
         }
@@ -187,11 +270,11 @@ export default function TrackAssistantConnected({ className }: { className?: str
           summary: `Top match: ${best.track.title} at ${best.track.org}, a ${best.overall}% fit, because ${best.rationale}${alsoText}`,
           data: compact,
         }
-      },
+    }
 
-      // apply_to_track: REAL — submits an application via the Convex
-      // `applications.apply` mutation, gated on a completed candidate profile.
-      async apply_to_track(args): Promise<ToolResult> {
+    // apply_to_track: REAL — submits an application via the Convex
+    // `applications.apply` mutation, gated on a completed candidate profile.
+    const applyToTrackExec = async (args: Record<string, unknown>): Promise<ToolResult> => {
         if (trackData === undefined || candidate === undefined || myTrackIds === undefined) {
           return { ok: false, summary: 'Track data is still loading, try again in a moment.' }
         }
@@ -254,9 +337,32 @@ export default function TrackAssistantConnected({ className }: { className?: str
           summary: `Applied to ${track.title} at ${track.org}: ${overall}% fit. The team reviews applicants within ${track.slaHours}h.`,
           data: { title: track.title, org: track.org, id: track.id, overall },
         }
-      },
     }
-  }, [trackData, candidate, myTrackIds, apply])
 
-  return <TrackAssistant executors={executors} className={className} />
+    // Assemble ONLY this persona's allowed executors. Disallowed tools get a
+    // refusing executor so a cross-role action is refused, never run.
+    if (role === 'company') {
+      return {
+        create_track: createTrackExec,
+        search_tracks: searchTracksExec,
+        recommend_track: refuseForCompany,
+        apply_to_track: refuseForCompany,
+      }
+    }
+    return {
+      search_tracks: searchTracksExec,
+      recommend_track: recommendTrackExec,
+      apply_to_track: applyToTrackExec,
+      create_track: refuseForCandidate,
+    }
+  }, [trackData, candidate, myTrackIds, apply, createTrack, role])
+
+  return (
+    <TrackAssistant
+      executors={executors}
+      className={className}
+      role={role}
+      showHeader={!embedded}
+    />
+  )
 }
