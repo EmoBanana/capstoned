@@ -11,8 +11,6 @@ import { Page, Card, Badge, Button, ProgressBar, Eyebrow, ReliabilityScore } fro
 /*  weighted-match scores, server-persisted accept / decline.          */
 /* ------------------------------------------------------------------ */
 
-const ORG_SLUG = 'talentbank' // the signed-in recruiter's org (demo)
-
 const initialsOf = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '—'
 const appliedLabel = (hoursAgo: number) =>
@@ -93,8 +91,10 @@ type Applicant = {
 }
 
 export default function ApplicantReview() {
-  const data = useQuery(api.applications.forOrg, { orgSlug: ORG_SLUG })
-  const orgRel = useQuery(api.reliability.orgScore, { orgSlug: ORG_SLUG })
+  const org = useQuery(api.organizations.mine)
+  const orgSlug = org?.slug
+  const data = useQuery(api.applications.forOrg, orgSlug ? { orgSlug } : 'skip')
+  const orgRel = useQuery(api.reliability.orgScore, orgSlug ? { orgSlug } : 'skip')
   const setStatus = useMutation(api.applications.setStatus)
   const [sortKey, setSortKey] = useState<SortKey>('match-desc')
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
@@ -140,7 +140,7 @@ export default function ApplicantReview() {
             {data?.trackTitle ?? 'Frontend Architecture Mentorship'}
           </h1>
           <p className="mt-1 text-sm font-medium text-ink-soft">
-            Talentbank · Reviewing incoming applications
+            {org?.name ?? '…'} · Reviewing incoming applications
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3">

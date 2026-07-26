@@ -1,5 +1,14 @@
 import { render, screen, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
+
+const { createSpy } = vi.hoisted(() => ({ createSpy: vi.fn() }))
+vi.mock('convex/react', () => ({
+  useQuery: () => ({ id: 'o1', name: 'Talentbank', slug: 'talentbank', brandColor: 'D81439', reliability: 98, department: '', about: '' }),
+  useMutation: () => createSpy,
+}))
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), replace: vi.fn() }) }))
+
 import TrackBuilder from '@/src/screens/TrackBuilder'
 
 /** Advance the wizard from step 1 to step 3 by clicking Continue twice. */

@@ -6,7 +6,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { useConvexAuth, useQuery } from 'convex/react'
 import { useAuthActions } from '@convex-dev/auth/react'
 import { api } from '@/convex/_generated/api'
-import { Logo, TalentbankLogo } from '@/src/components/ui'
+import { Logo } from '@/src/components/ui'
 
 const TABS = [
   { href: '/recruiter/dashboard', label: 'Dashboard' },
@@ -19,6 +19,7 @@ const TABS = [
 export default function RecruiterLayout({ children }: { children: React.ReactNode }) {
   const { isLoading, isAuthenticated } = useConvexAuth()
   const me = useQuery(api.users.currentUser, isAuthenticated ? {} : 'skip')
+  const org = useQuery(api.organizations.mine, isAuthenticated ? {} : 'skip')
   const { signOut } = useAuthActions()
   const router = useRouter()
   const pathname = usePathname()
@@ -29,11 +30,16 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
       router.replace('/welcome')
       return
     }
-    if (me && me.role === 'student') router.replace('/student/marketplace')
-  }, [isLoading, isAuthenticated, me, router])
+    if (me && me.role === 'student') { router.replace('/student/marketplace'); return }
+    // A recruiter with no company yet can't manage anything — set it up first.
+    if (me && me.role === 'recruiter' && org !== undefined && org === null) {
+      router.replace('/company-onboarding')
+    }
+  }, [isLoading, isAuthenticated, me, org, router])
 
   if (isLoading || !isAuthenticated || me === undefined || me === null) return null
   if (me.role === 'student') return null
+  if (org === undefined || org === null) return null
 
   const active = (href: string) => pathname === href || pathname.startsWith(href + '/')
 
@@ -68,8 +74,9 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
           </nav>
 
           <div className="flex items-center gap-3">
-            <span className="hidden sm:inline-flex">
-              <TalentbankLogo className="text-[12px]" />
+            <span className="hidden items-center gap-2 sm:inline-flex">
+              <span className="h-2.5 w-2.5 rounded-[1px]" style={{ backgroundColor: `#${org.brandColor}` }} />
+              <span className="text-[13px] font-bold text-ink">{org.name}</span>
             </span>
             <button
               onClick={() => {
@@ -105,7 +112,7 @@ export default function RecruiterLayout({ children }: { children: React.ReactNod
       <footer className="border-t border-line">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-6 text-xs text-ink-faint">
           <span>CapStoned — mentorship that starts years before graduation.</span>
-          <span className="hidden sm:inline">Talentbank · Talent Team</span>
+          <span className="hidden sm:inline">{org.name}</span>
         </div>
       </footer>
     </div>

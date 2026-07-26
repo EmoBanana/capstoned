@@ -1,79 +1,57 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { vi } from 'vitest'
+
+const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
+vi.mock('convex/react', () => ({ useQuery: (...a: unknown[]) => useQueryMock(...a) }))
+
 import RecruiterDashboard from '@/src/screens/RecruiterDashboard'
 
+const DATA = {
+  org: { name: 'Talentbank', slug: 'talentbank', reliability: 98 },
+  programs: [
+    { id: 'p1', title: 'Frontend Architecture Mentorship', status: 'open', intensity: 'moderate', durationWeeks: 12, weeklyHours: 10, cap: 50, applicants: 15, enrolled: 2, avgFit: 83 },
+    { id: 'p2', title: 'Payments Reliability Track', status: 'draft', intensity: 'moderate', durationWeeks: 12, weeklyHours: 8, cap: 40, applicants: 0, enrolled: 0, avgFit: null },
+  ],
+}
+
+beforeEach(() => useQueryMock.mockReturnValue(DATA))
+
 describe('RecruiterDashboard', () => {
-  it('renders the header, stat cards and all four programs', () => {
+  it('renders the header, real stat aggregates and the org programs', () => {
     render(<RecruiterDashboard />)
-
-    expect(
-      screen.getByRole('heading', { name: /your mentorship programs/i }),
-    ).toBeInTheDocument()
-
-    // Stat cards: derived aggregates. The label is a div inside the Card div,
-    // so its parent card element carries both the label and the value text.
-    // active programs = non-draft = 3
-    expect(screen.getByText('Active programs').parentElement).toHaveTextContent('3')
-    // applicants in review = 47 + 32 = 79
-    expect(screen.getByText('Applicants in review').parentElement).toHaveTextContent('79')
-    // enrolled mentees = 6 + 4 = 10
-    expect(screen.getByText('Enrolled mentees').parentElement).toHaveTextContent('10')
-
-    // All four program cards render by default
+    expect(screen.getByRole('heading', { name: /your mentorship programs/i })).toBeInTheDocument()
+    expect(screen.getByText('Active programs').parentElement).toHaveTextContent('1') // one open
+    expect(screen.getByText('Applicants in review').parentElement).toHaveTextContent('15')
+    expect(screen.getByText('Enrolled mentees').parentElement).toHaveTextContent('2')
     expect(screen.getByText('Frontend Architecture Mentorship')).toBeInTheDocument()
-    expect(screen.getByText('Mobile Growth Analytics Track')).toBeInTheDocument()
-    expect(screen.getByText('Backend Reliability Sprint')).toBeInTheDocument()
-    expect(screen.getByText('Data Platform Mentorship')).toBeInTheDocument()
-  })
-
-  it('shows the in-progress week tracker for Frontend Architecture Mentorship', () => {
-    render(<RecruiterDashboard />)
-    expect(screen.getByText(/Week 8 \/ 12/i)).toBeInTheDocument()
+    expect(screen.getByText('Payments Reliability Track')).toBeInTheDocument()
   })
 
   it('filters to only Open programs when the Open filter is clicked', async () => {
     render(<RecruiterDashboard />)
-
-    const openFilter = screen.getByRole('button', { name: /^Open/i })
-    await userEvent.click(openFilter)
-
-    // Only the single open program remains
-    expect(screen.getByText('Mobile Growth Analytics Track')).toBeInTheDocument()
-    expect(screen.queryByText('Frontend Architecture Mentorship')).not.toBeInTheDocument()
-    expect(screen.queryByText('Backend Reliability Sprint')).not.toBeInTheDocument()
-    expect(screen.queryByText('Data Platform Mentorship')).not.toBeInTheDocument()
-  })
-
-  it('filters to only In progress programs (two of four)', async () => {
-    render(<RecruiterDashboard />)
-
-    // Match the filter chip; use aria-pressed to distinguish from card labels
-    const inProgressFilter = screen
-      .getAllByRole('button', { name: /In progress/i })
-      .find((b) => b.getAttribute('aria-pressed') !== null)!
-    await userEvent.click(inProgressFilter)
-
+    await userEvent.click(screen.getByRole('button', { name: /^Open/i }))
     expect(screen.getByText('Frontend Architecture Mentorship')).toBeInTheDocument()
-    expect(screen.getByText('Backend Reliability Sprint')).toBeInTheDocument()
-    expect(screen.queryByText('Mobile Growth Analytics Track')).not.toBeInTheDocument()
-    expect(screen.queryByText('Data Platform Mentorship')).not.toBeInTheDocument()
+    expect(screen.queryByText('Payments Reliability Track')).not.toBeInTheDocument()
   })
 
-  it('fires onNavigate("applicants") when a program\'s View applicants is clicked', async () => {
+  it('fires onNavigate("applicants") when Review applicants is clicked', async () => {
     const onNavigate = vi.fn()
     render(<RecruiterDashboard onNavigate={onNavigate} />)
-
-    const viewButtons = screen.getAllByRole('button', { name: /view applicants/i })
-    await userEvent.click(viewButtons[0])
+    await userEvent.click(screen.getAllByRole('button', { name: /review applicants/i })[0])
     expect(onNavigate).toHaveBeenCalledWith('applicants')
   })
 
-  it('fires onNavigate("new-track") when New Program is clicked', async () => {
+  it('fires onNavigate("new-track") when New Track is clicked', async () => {
     const onNavigate = vi.fn()
     render(<RecruiterDashboard onNavigate={onNavigate} />)
-
-    await userEvent.click(screen.getByRole('button', { name: /new program/i }))
+    await userEvent.click(screen.getByRole('button', { name: /new track/i }))
     expect(onNavigate).toHaveBeenCalledWith('new-track')
+  })
+
+  it('shows an empty state when the company has no tracks', () => {
+    useQueryMock.mockReturnValue({ org: DATA.org, programs: [] })
+    render(<RecruiterDashboard />)
+    expect(screen.getByText(/no tracks yet/i)).toBeInTheDocument()
   })
 })

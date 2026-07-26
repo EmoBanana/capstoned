@@ -16,7 +16,9 @@ const initialsOf = (name: string) =>
   name.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || '—'
 
 export default function RecruiterAssessment() {
-  const data = useQuery(api.enrollments.assessmentData, { orgSlug: 'talentbank' })
+  const org = useQuery(api.organizations.mine)
+  const orgSlug = org?.slug
+  const data = useQuery(api.enrollments.assessmentData, orgSlug ? { orgSlug } : 'skip')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   if (data === undefined) {

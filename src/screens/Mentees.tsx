@@ -12,8 +12,6 @@ import MicroBondContract from '../components/MicroBondContract'
 /*  each mentee's real tasks + micro-bond offers.                       */
 /* ------------------------------------------------------------------ */
 
-const ORG_SLUG = 'talentbank'
-
 type MenteeStatus = 'ahead' | 'on-track' | 'needs-support' | 'at-risk'
 type TaskStatus = 'todo' | 'in-progress' | 'submitted' | 'done' | 'blocked'
 type MenteeData = {
@@ -246,8 +244,10 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
 }
 
 export default function Mentees() {
-  const data = useQuery(api.enrollments.menteesForOrg, { orgSlug: ORG_SLUG })
-  const orgRel = useQuery(api.reliability.orgScore, { orgSlug: ORG_SLUG })
+  const org = useQuery(api.organizations.mine)
+  const orgSlug = org?.slug
+  const data = useQuery(api.enrollments.menteesForOrg, orgSlug ? { orgSlug } : 'skip')
+  const orgRel = useQuery(api.reliability.orgScore, orgSlug ? { orgSlug } : 'skip')
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   if (data === undefined) {
@@ -280,7 +280,7 @@ export default function Mentees() {
           <Eyebrow>Company · Mentees</Eyebrow>
           <h1 className="mt-2 text-2xl font-black tracking-tight text-ink sm:text-3xl">Enrolled mentees</h1>
           <p className="mt-1 text-sm font-medium text-ink-soft">
-            {data?.trackTitle} · Talentbank · {data?.totalWeeks}-week track
+            {data?.trackTitle} · {org?.name ?? '…'} · {data?.totalWeeks}-week track
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-3">

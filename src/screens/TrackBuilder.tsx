@@ -1,6 +1,9 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { useMutation, useQuery } from 'convex/react'
+import { api } from '@/convex/_generated/api'
 import {
   Page,
   Button,
@@ -39,8 +42,6 @@ const STEPS: { n: number; label: string; tag: string }[] = [
 
 const INTENSITY_OPTIONS = ['Part-time', 'Full-time'] as const
 type Intensity = (typeof INTENSITY_OPTIONS)[number]
-
-const COMPANY_NAME = 'Talentbank'
 
 /* ------------------------------------------------------------------ */
 /*  Tiny inline icons (sharp, currentColor, 1.5 stroke)                */
@@ -98,12 +99,19 @@ function IconArrow({ dir }: { dir: 'left' | 'right' }) {
 export default function TrackBuilder() {
   const [step, setStep] = useState<number>(1)
 
+  const router = useRouter()
+  const createTrack = useMutation(api.tracks.create)
+  const org = useQuery(api.organizations.mine)
+  const companyName = org?.name ?? 'Your company'
+  const companyInitials = companyName.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase() || 'CO'
+
   // Step 1 — Basics
   const [title, setTitle] = useState<string>('Frontend Platform Mentorship')
   const [department, setDepartment] = useState<string>('Engineering · Web Platform')
   const [description, setDescription] = useState<string>(
     'A milestone-driven track where pre-final-year students build production UI alongside our platform engineers — components, testing, and release workflows.',
   )
+  const [skillsText, setSkillsText] = useState<string>('React, TypeScript, Design Systems')
 
   // Step 2 — Commitment
   const [intensity, setIntensity] = useState<Intensity>('Part-time')
@@ -125,6 +133,7 @@ export default function TrackBuilder() {
   ])
 
   const [published, setPublished] = useState<boolean>(false)
+  const [publishing, setPublishing] = useState<boolean>(false)
 
   /* --- dynamic row handlers --- */
   const addDeliverable = () =>
@@ -166,7 +175,35 @@ export default function TrackBuilder() {
   /* --- navigation --- */
   const goBack = () => setStep((s) => Math.max(1, s - 1))
   const goNext = () => setStep((s) => Math.min(STEPS.length, s + 1))
-  const publish = () => setPublished(true)
+
+  const canPublish = weightBalanced && validDeliverableCount > 0 && title.trim() !== '' && department.trim() !== ''
+  const publish = async () => {
+    if (!canPublish || publishing) return
+    setPublishing(true)
+    try {
+      const requiredSkills = skillsText
+        .split(',')
+        .map((s) => s.trim())
+        .filter(Boolean)
+        .map((name) => ({ name, weight: 1, targetLevel: 80 }))
+      await createTrack({
+        title: title.trim(),
+        department: department.trim(),
+        summary: description.trim(),
+        intensity: intensity === 'Full-time' ? 'intense' : 'moderate',
+        durationWeeks,
+        weeklyHours,
+        cap,
+        slaHours,
+        deliverables: deliverables.map((d) => d.title.trim()).filter(Boolean),
+        requiredSkills,
+      })
+      setPublished(true)
+      router.push('/recruiter/dashboard')
+    } catch {
+      setPublishing(false)
+    }
+  }
 
   const commitmentLine =
     intensity === 'Full-time'
@@ -273,6 +310,18 @@ export default function TrackBuilder() {
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="What will a student actually do, and why does your team care?"
+                  />
+                </Field>
+                <Field
+                  label="Required skills"
+                  htmlFor="skills"
+                  hint="comma-separated — drives candidate matching"
+                >
+                  <Input
+                    id="skills"
+                    value={skillsText}
+                    onChange={(e) => setSkillsText(e.target.value)}
+                    placeholder="e.g. React, TypeScript, Design Systems"
                   />
                 </Field>
               </div>
@@ -546,13 +595,15 @@ export default function TrackBuilder() {
                   variant="primary"
                   size="lg"
                   onClick={publish}
-                  disabled={!weightBalanced || validDeliverableCount === 0 || published}
+                  disabled={!canPublish || published || publishing}
                 >
                   {published ? (
                     <>
                       <IconCheck />
                       Track Published
                     </>
+                  ) : publishing ? (
+                    'Publishing…'
                   ) : (
                     'Publish Track'
                   )}
@@ -584,10 +635,10 @@ export default function TrackBuilder() {
             {/* company strip */}
             <div className="flex items-center gap-3 border-b border-line bg-paper px-5 py-4">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-[2px] border border-line-strong bg-white text-sm font-black text-ink">
-                TB
+                {companyInitials}
               </div>
               <div className="min-w-0 leading-tight">
-                <div className="truncate text-sm font-bold text-ink">{COMPANY_NAME}</div>
+                <div className="truncate text-sm font-bold text-ink">{companyName}</div>
                 <div className="text-[11px] text-ink-faint">{department || 'Department'}</div>
               </div>
             </div>

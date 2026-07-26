@@ -27,14 +27,21 @@ export default defineSchema({
     role: v.optional(v.union(v.literal('student'), v.literal('recruiter'))),
   }).index('email', ['email']),
 
-  // Session-B enrichment: brand logo + reliability, keyed by slug.
+  // Session-B enrichment: brand logo + reliability, keyed by slug. A company is
+  // owned by the recruiter who registered it (ownerUserId); seeded orgs are
+  // unowned until a recruiter claims one during company onboarding.
   organizations: defineTable({
     name: v.string(),
     slug: v.string(),
     brandColor: v.string(),
     reliability: v.number(),
     verified: v.boolean(),
-  }).index('by_slug', ['slug']),
+    ownerUserId: v.optional(v.id('users')),
+    department: v.optional(v.string()),
+    about: v.optional(v.string()),
+  })
+    .index('by_slug', ['slug'])
+    .index('by_owner', ['ownerUserId']),
 
   // domain.Track (+ orgSlug/slaHours/closesInDays/status extensions).
   tracks: defineTable({

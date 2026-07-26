@@ -14,6 +14,7 @@ import type * as candidates from "../candidates.js";
 import type * as enrollments from "../enrollments.js";
 import type * as health from "../health.js";
 import type * as http from "../http.js";
+import type * as organizations from "../organizations.js";
 import type * as reliability from "../reliability.js";
 import type * as seed from "../seed.js";
 import type * as sponsorships from "../sponsorships.js";
@@ -34,6 +35,7 @@ declare const fullApi: ApiFromModules<{
   enrollments: typeof enrollments;
   health: typeof health;
   http: typeof http;
+  organizations: typeof organizations;
   reliability: typeof reliability;
   seed: typeof seed;
   sponsorships: typeof sponsorships;
