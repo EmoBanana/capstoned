@@ -21,17 +21,47 @@ export const mine = query({
   args: {},
   handler: async (ctx) => {
     const org = await myOrg(ctx)
-    return org
-      ? {
-          id: org._id as string,
-          name: org.name,
-          slug: org.slug,
-          brandColor: org.brandColor,
-          reliability: org.reliability,
-          department: org.department ?? '',
-          about: org.about ?? '',
-        }
-      : null
+    if (!org) return null
+    const logoUrl = org.logoStorageId ? await ctx.storage.getUrl(org.logoStorageId) : null
+    return {
+      id: org._id as string,
+      name: org.name,
+      slug: org.slug,
+      brandColor: org.brandColor,
+      reliability: org.reliability,
+      department: org.department ?? '',
+      about: org.about ?? '',
+      logoUrl,
+    }
+  },
+})
+
+/**
+ * Hand the signed-in owner a short-lived signed URL to POST their logo file to.
+ * Only a recruiter who already owns a company may upload for it.
+ */
+export const generateLogoUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const org = await myOrg(ctx)
+    if (!org) throw new ConvexError('Create your company profile first')
+    return await ctx.storage.generateUploadUrl()
+  },
+})
+
+/**
+ * Attach an uploaded file as the caller's company logo. Replacing an existing
+ * logo deletes the previous storage object so nothing is orphaned.
+ */
+export const setLogo = mutation({
+  args: { storageId: v.id('_storage') },
+  handler: async (ctx, { storageId }) => {
+    const org = await myOrg(ctx)
+    if (!org) throw new ConvexError('Create your company profile first')
+    if (org.logoStorageId && org.logoStorageId !== storageId) {
+      await ctx.storage.delete(org.logoStorageId)
+    }
+    await ctx.db.patch(org._id, { logoStorageId: storageId })
   },
 })
 

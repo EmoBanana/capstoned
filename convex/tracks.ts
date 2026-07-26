@@ -25,12 +25,14 @@ export const list = query({
           .query('applications')
           .withIndex('by_track', (q) => q.eq('trackId', t._id))
           .collect()
+        const logoUrl = org?.logoStorageId ? await ctx.storage.getUrl(org.logoStorageId) : null
         return {
           ...t,
           id: t._id as string,
           applicants: t.applicants + liveApps.length,
           reliability: org?.reliability ?? 90,
           brandColor: org?.brandColor ?? '888888',
+          logoUrl,
         }
       }),
     )

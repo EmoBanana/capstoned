@@ -8,6 +8,7 @@ import { Page, Card, Badge, Button, ProgressBar, Eyebrow, ReliabilityScore, Fiel
 import { SkeletonGrid } from '../components/Skeleton'
 import { useDialog } from '../components/useDialog'
 import { errorText } from '../components/errors'
+import { CompanyLogo } from '../components/CompanyLogo'
 
 /* ------------------------------------------------------------------ */
 /*  Company home — real mentorship programs for the recruiter's org.    */
@@ -217,6 +218,7 @@ function TrackEditModal({
 
 export default function RecruiterDashboard({ onNavigate }: { onNavigate?: (id: string) => void }) {
   const data = useQuery(api.tracks.forOrgManage)
+  const org = useQuery(api.organizations.mine)
   const closeTrack = useMutation(api.tracks.close)
   const [filter, setFilter] = useState<Filter>('all')
   const [editing, setEditing] = useState<Program | null>(null)
@@ -234,7 +236,10 @@ export default function RecruiterDashboard({ onNavigate }: { onNavigate?: (id: s
         <div>
           <Eyebrow>Company · Dashboard</Eyebrow>
           <h1 className="mt-2 text-3xl font-black tracking-tight text-ink sm:text-4xl">Your mentorship programs</h1>
-          <p className="mt-3 text-sm text-ink-soft">{data?.org.name ?? '…'}</p>
+          <div className="mt-3 flex items-center gap-2.5">
+            {org && <CompanyLogo slug={org.slug} name={org.name} logoUrl={org.logoUrl} className="h-6 w-6" />}
+            <p className="text-sm text-ink-soft">{data?.org.name ?? '…'}</p>
+          </div>
         </div>
         <Button variant="primary" size="lg" onClick={() => onNavigate?.('new-track')}>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} className="h-4 w-4">

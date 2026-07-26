@@ -1,11 +1,16 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import type { ChangeEvent } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
+import type { Id } from '@/convex/_generated/dataModel'
 import { Page, Eyebrow, Card, Button, Field, Input, Textarea } from '../components/ui'
+import { CompanyLogo } from '../components/CompanyLogo'
 import { errorText } from '../components/errors'
 import { SkeletonGrid } from '../components/Skeleton'
+
+const MAX_LOGO_BYTES = 2 * 1024 * 1024
 
 /* ------------------------------------------------------------------ */
 /*  Company settings — edit the real organization after onboarding.     */
@@ -16,6 +21,8 @@ const PALETTE = ['D81439', '00B14F', '4285F4', '635BFF', 'EE4D2D', '76B900', 'FF
 export default function CompanySettings() {
   const org = useQuery(api.organizations.mine)
   const saveCompany = useMutation(api.organizations.saveCompany)
+  const generateLogoUploadUrl = useMutation(api.organizations.generateLogoUploadUrl)
+  const setLogo = useMutation(api.organizations.setLogo)
 
   const [name, setName] = useState('')
   const [department, setDepartment] = useState('')
@@ -24,6 +31,9 @@ export default function CompanySettings() {
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [uploading, setUploading] = useState(false)
+  const [logoSaved, setLogoSaved] = useState(false)
+  const [logoError, setLogoError] = useState<string | null>(null)
 
   useEffect(() => {
     if (org) {
@@ -48,6 +58,39 @@ export default function CompanySettings() {
     }
   }
 
+  const onLogoChange = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setLogoError(null)
+    setLogoSaved(false)
+    if (!file.type.startsWith('image/')) {
+      setLogoError('Please choose an image file.')
+      return
+    }
+    if (file.size > MAX_LOGO_BYTES) {
+      setLogoError('That image is over 2 MB. Please choose a smaller one.')
+      return
+    }
+    setUploading(true)
+    try {
+      const url = await generateLogoUploadUrl()
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': file.type },
+        body: file,
+      })
+      if (!res.ok) throw new Error('Upload failed, please try again.')
+      const { storageId } = (await res.json()) as { storageId: Id<'_storage'> }
+      await setLogo({ storageId })
+      setLogoSaved(true)
+    } catch (err) {
+      setLogoError(errorText(err))
+    } finally {
+      setUploading(false)
+    }
+  }
+
   return (
     <Page>
       <header className="mb-6">
@@ -61,6 +104,33 @@ export default function CompanySettings() {
       ) : (
         <Card className="p-6">
           <div className="grid grid-cols-1 gap-5">
+            <Field label="Logo">
+              <div className="flex items-center gap-4">
+                <CompanyLogo
+                  slug={org?.slug ?? ''}
+                  name={name || org?.name || 'Company'}
+                  logoUrl={org?.logoUrl ?? null}
+                  className="h-16 w-16 border border-line-strong"
+                />
+                <div className="flex flex-col items-start gap-2">
+                  <label
+                    className={`inline-flex cursor-pointer items-center justify-center border border-line-strong bg-white px-3.5 py-2 text-xs font-semibold tracking-tight text-ink-soft rounded-[2px] transition-colors hover:border-ink hover:text-ink ${uploading ? 'pointer-events-none opacity-60' : ''}`}
+                  >
+                    {uploading ? 'Uploading…' : 'Upload logo'}
+                    <input
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      disabled={uploading}
+                      onChange={onLogoChange}
+                    />
+                  </label>
+                  <p className="text-xs text-ink-faint">PNG, JPG or SVG up to 2 MB. Without one, candidates see a monogram.</p>
+                  {logoSaved && <span className="text-xs font-medium text-success-ink">✓ Logo updated</span>}
+                  {logoError && <span className="text-xs font-medium text-danger">{logoError}</span>}
+                </div>
+              </div>
+            </Field>
             <Field label="Company name" required>
               <Input value={name} onChange={(e) => { setName(e.target.value); setSaved(false) }} />
             </Field>

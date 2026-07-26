@@ -39,6 +39,7 @@ export default defineSchema({
     ownerUserId: v.optional(v.id('users')),
     department: v.optional(v.string()),
     about: v.optional(v.string()),
+    logoStorageId: v.optional(v.id('_storage')),
   })
     .index('by_slug', ['slug'])
     .index('by_owner', ['ownerUserId']),

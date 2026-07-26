@@ -50,6 +50,7 @@ type TrackRow = {
   slaHours: number
   closesInDays: number
   reliability: number
+  logoUrl: string | null
   // (plus domain fields used only by computeMatch — passed through)
   [key: string]: unknown
 }
@@ -109,7 +110,7 @@ function TrackCard({
   return (
     <Card className="flex cursor-pointer flex-col p-6 transition-colors hover:border-line-strong" onClick={onView}>
       <div className="flex items-center gap-3">
-        <CompanyLogo slug={track.orgSlug} name={track.org} className="h-10 w-10" />
+        <CompanyLogo slug={track.orgSlug} name={track.org} logoUrl={track.logoUrl} className="h-10 w-10" />
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-ink">{track.org}</p>
           <p className="truncate text-xs text-ink-faint">
@@ -191,7 +192,7 @@ function ApplyModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-start gap-3 border-b border-line px-6 py-5">
-          <CompanyLogo slug={track.orgSlug} name={track.org} className="h-11 w-11" />
+          <CompanyLogo slug={track.orgSlug} name={track.org} logoUrl={track.logoUrl} className="h-11 w-11" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-ink">{track.org}</p>
             <h3 className="text-base font-bold leading-snug tracking-tight text-ink">{track.title}</h3>
@@ -273,7 +274,7 @@ function TrackDetailModal({
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/50 backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose}>
       <div ref={dialogRef} role="dialog" aria-modal="true" aria-label={track.title} tabIndex={-1} className="flex max-h-[94vh] w-full max-w-2xl flex-col overflow-hidden border border-line-strong bg-cream rounded-t-[6px] focus:outline-none sm:rounded-[4px]" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start gap-3 border-b border-line px-6 py-5">
-          <CompanyLogo slug={track.orgSlug} name={track.org} className="h-11 w-11" />
+          <CompanyLogo slug={track.orgSlug} name={track.org} logoUrl={track.logoUrl} className="h-11 w-11" />
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-ink">{track.org} · {track.department}</p>
             <h3 className="text-lg font-bold leading-snug tracking-tight text-ink">{track.title}</h3>

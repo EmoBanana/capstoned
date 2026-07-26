@@ -26,18 +26,30 @@ const ICONS: Record<string, Icon> = {
 }
 
 /**
- * Renders a real brand logo (via simple-icons) on a sharp tile. Talentbank uses
- * its wordmark; unknown slugs fall back to a monogram from the company name.
+ * Renders a company logo on a sharp tile. An uploaded logo wins when present;
+ * otherwise a real brand logo via simple-icons, Talentbank's wordmark, and
+ * finally a monogram derived from the company name.
  */
 export function CompanyLogo({
   slug,
   name,
+  logoUrl,
   className = 'h-11 w-11',
 }: {
   slug: string
   name: string
+  logoUrl?: string | null
   className?: string
 }) {
+  if (logoUrl) {
+    return (
+      <div className={`flex shrink-0 items-center justify-center overflow-hidden ${className}`}>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={logoUrl} alt={name} className="h-full w-full object-contain" />
+      </div>
+    )
+  }
+
   if (slug === 'talentbank') {
     return (
       <div className="flex shrink-0 items-center">
