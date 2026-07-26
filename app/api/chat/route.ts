@@ -92,7 +92,10 @@ async function streamFromProvider(
         : await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ model: OLLAMA_MODEL, messages, stream: true, options: { temperature } }),
+            // think:false — the Gemma build otherwise emits a long thinking
+            // trace (ignored by the parser) before any content, which reads as
+            // a stalled, empty reply.
+            body: JSON.stringify({ model: OLLAMA_MODEL, messages, stream: true, think: false, options: { temperature } }),
           })
 
     if (!upstream.ok || !upstream.body) return null

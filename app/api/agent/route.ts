@@ -132,7 +132,9 @@ async function completeFromProvider(
     const upstream = await fetch(`${OLLAMA_BASE_URL}/api/chat`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model: OLLAMA_MODEL, messages, stream: false, options: { temperature } }),
+      // think:false — this Gemma build is thinking-capable and otherwise routes
+      // its whole reply into a separate `thinking` field, leaving content empty.
+      body: JSON.stringify({ model: OLLAMA_MODEL, messages, stream: false, think: false, options: { temperature } }),
     })
     if (!upstream.ok) return null
     const data = (await upstream.json()) as { message?: { content?: string } }
