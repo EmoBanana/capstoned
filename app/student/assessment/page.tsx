@@ -1,5 +1,5 @@
-import StudentAssessment from '@/src/screens/StudentAssessment'
+import MatchExplorer from '@/src/components/match/MatchExplorer'
 
 export default function Page() {
-  return <StudentAssessment />
+  return <MatchExplorer />
 }

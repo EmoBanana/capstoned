@@ -1,5 +1,5 @@
-import MatchReport from '@/src/screens/MatchReport'
+import RecruiterAssessment from '@/src/screens/RecruiterAssessment'
 
 export default function Page() {
-  return <MatchReport />
+  return <RecruiterAssessment />
 }

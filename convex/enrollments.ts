@@ -60,6 +60,29 @@ export const menteesForOrg = query({
   },
 })
 
+/** Full candidate docs + track doc (tracks.list shape) for the recruiter's
+ *  assessment view, so Session A's MatchReport can run on live data. */
+export const assessmentData = query({
+  args: { orgSlug: v.string() },
+  handler: async (ctx, { orgSlug }) => {
+    const org = (await ctx.db.query('organizations').collect()).find((o) => o.slug === orgSlug)
+    const trackDoc = (await ctx.db.query('tracks').collect()).find((t) => t.orgSlug === orgSlug)
+    if (!trackDoc) return null
+    const track = { ...trackDoc, id: trackDoc._id as string, reliability: org?.reliability ?? 90, brandColor: org?.brandColor ?? '888888' }
+    const enrollments = await ctx.db
+      .query('enrollments')
+      .withIndex('by_track', (q) => q.eq('trackId', trackDoc._id))
+      .collect()
+    const mentees = await Promise.all(
+      enrollments.map(async (e) => {
+        const candidate = await ctx.db.get(e.candidateId)
+        return { enrollmentId: e._id as string, name: candidate?.name ?? '—', candidate }
+      }),
+    )
+    return { track, mentees }
+  },
+})
+
 /** The signed-in student's own mentorship (progress, tasks, mentor feedback). */
 export const myMentorship = query({
   args: {},
