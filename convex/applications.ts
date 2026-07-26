@@ -133,7 +133,7 @@ export const mine = query({
       .query('applications')
       .withIndex('by_candidate', (q) => q.eq('candidateId', candidate._id))
       .collect()
-    return Promise.all(
+    const rows = await Promise.all(
       apps.map(async (a) => {
         const track = await ctx.db.get(a.trackId)
         const org = track
@@ -163,6 +163,11 @@ export const mine = query({
         }
       }),
     )
+    // Surface the active mentorship first, then most recent applications.
+    return rows.sort((a, b) => {
+      if (a.enrolledHere !== b.enrolledHere) return a.enrolledHere ? -1 : 1
+      return b.appliedAt - a.appliedAt
+    })
   },
 })
 
