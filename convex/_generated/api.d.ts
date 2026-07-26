@@ -11,9 +11,11 @@
 import type * as applications from "../applications.js";
 import type * as auth from "../auth.js";
 import type * as candidates from "../candidates.js";
+import type * as enrollments from "../enrollments.js";
 import type * as health from "../health.js";
 import type * as http from "../http.js";
 import type * as seed from "../seed.js";
+import type * as tasks from "../tasks.js";
 import type * as tracks from "../tracks.js";
 import type * as users from "../users.js";
 
@@ -27,9 +29,11 @@ declare const fullApi: ApiFromModules<{
   applications: typeof applications;
   auth: typeof auth;
   candidates: typeof candidates;
+  enrollments: typeof enrollments;
   health: typeof health;
   http: typeof http;
   seed: typeof seed;
+  tasks: typeof tasks;
   tracks: typeof tracks;
   users: typeof users;
 }>;

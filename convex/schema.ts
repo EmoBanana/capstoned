@@ -96,4 +96,41 @@ export default defineSchema({
   })
     .index('by_track', ['trackId'])
     .index('by_candidate', ['candidateId']),
+
+  // An accepted candidate actively mentoring in a track.
+  enrollments: defineTable({
+    trackId: v.id('tracks'),
+    candidateId: v.id('candidates'),
+    mentorName: v.string(),
+    status: v.union(
+      v.literal('ahead'),
+      v.literal('on-track'),
+      v.literal('needs-support'),
+      v.literal('at-risk'),
+    ),
+    weekProgress: v.number(),
+    totalWeeks: v.number(),
+    hoursCommitted: v.number(),
+    fit: v.number(),
+    feedback: v.array(
+      v.object({ author: v.string(), role: v.string(), when: v.string(), body: v.string() }),
+    ),
+  })
+    .index('by_track', ['trackId'])
+    .index('by_candidate', ['candidateId']),
+
+  tasks: defineTable({
+    enrollmentId: v.id('enrollments'),
+    title: v.string(),
+    status: v.union(
+      v.literal('todo'),
+      v.literal('in-progress'),
+      v.literal('submitted'),
+      v.literal('done'),
+      v.literal('blocked'),
+    ),
+    dueLabel: v.optional(v.string()),
+    mentorNote: v.optional(v.string()),
+    order: v.number(),
+  }).index('by_enrollment', ['enrollmentId']),
 })

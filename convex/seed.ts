@@ -168,9 +168,75 @@ const APPS = [
   { name: 'Aisha Rahman', matchScore: 47, hoursAgo: 30 },
 ]
 
+type SeedTask = {
+  title: string
+  status: 'todo' | 'in-progress' | 'submitted' | 'done' | 'blocked'
+  dueLabel?: string
+  mentorNote?: string
+}
+type SeedEnrollment = {
+  name: string
+  status: 'ahead' | 'on-track' | 'needs-support' | 'at-risk'
+  weekProgress: number
+  totalWeeks: number
+  hoursCommitted: number
+  fit: number
+  feedback: { author: string; role: string; when: string; body: string }[]
+  tasks: SeedTask[]
+}
+
+const wc = (when: string, body: string) => ({ author: 'Wei Chen', role: 'Senior Frontend Engineer', when, body })
+
+const ENROLLMENTS: SeedEnrollment[] = [
+  {
+    name: 'John Doe', status: 'on-track', weekProgress: 8, totalWeeks: 12, hoursCommitted: 78, fit: 88,
+    feedback: [
+      wc('2 days ago', 'PR review turnaround has been excellent — keep flagging blockers early.'),
+      wc('1 week ago', 'Great initiative taking the demo. Next: tighten test coverage on owned modules.'),
+      wc('Week 1', 'Welcome to the squad — start with the nav shell ticket.'),
+    ],
+    tasks: [
+      { title: 'Build the responsive navigation shell', status: 'done', mentorNote: 'Clean component API; great use of the design tokens.' },
+      { title: 'Lead the Week 8 sprint demo', status: 'done', mentorNote: 'Confident walkthrough, handled questions well.' },
+      { title: 'Refactor data-fetching into reusable hooks', status: 'in-progress', dueLabel: 'Due in 3 days' },
+      { title: 'Write tests for the rating module', status: 'todo' },
+      { title: 'Document the onboarding runbook', status: 'blocked', mentorNote: 'Waiting on infra access.' },
+    ],
+  },
+  {
+    name: 'Aisha Rahman', status: 'ahead', weekProgress: 8, totalWeeks: 12, hoursCommitted: 92, fit: 84,
+    feedback: [wc('3 days ago', 'Excellent write-up — circulated to the whole squad as reference.')],
+    tasks: [
+      { title: 'Design the shared state architecture', status: 'done', mentorNote: 'Ahead of schedule and well documented.' },
+      { title: 'Prototype the offline sync layer', status: 'in-progress', dueLabel: 'Due in 6 days' },
+      { title: 'Pair with a teammate on the layout system', status: 'todo' },
+    ],
+  },
+  {
+    name: 'Marcus Tan', status: 'needs-support', weekProgress: 8, totalWeeks: 12, hoursCommitted: 58, fit: 72,
+    feedback: [wc('4 days ago', "Let's sync mid-week — flag layout questions early and we'll unblock together.")],
+    tasks: [
+      { title: 'Build the responsive card grid', status: 'in-progress', dueLabel: 'Due in 2 days', mentorNote: 'Check in mid-week.' },
+      { title: 'Add empty + loading states', status: 'todo' },
+      { title: 'Resolve the flexbox overflow on mobile', status: 'blocked', mentorNote: 'Needs a pairing session.' },
+    ],
+  },
+  {
+    name: 'Priya Nair', status: 'on-track', weekProgress: 8, totalWeeks: 12, hoursCommitted: 70, fit: 81,
+    feedback: [wc('5 days ago', 'Nice attention to focus management on the dropdown.')],
+    tasks: [
+      { title: 'Build the notifications dropdown', status: 'done', mentorNote: 'Nice focus management.' },
+      { title: 'Integrate the search-as-you-type endpoint', status: 'in-progress', dueLabel: 'Due in 5 days' },
+      { title: 'Write component usage docs', status: 'todo' },
+    ],
+  },
+]
+
 export const run = internalMutation({
   args: {},
   handler: async (ctx) => {
+    for (const t of await ctx.db.query('tasks').collect()) await ctx.db.delete(t._id)
+    for (const e of await ctx.db.query('enrollments').collect()) await ctx.db.delete(e._id)
     for (const a of await ctx.db.query('applications').collect()) await ctx.db.delete(a._id)
     for (const t of await ctx.db.query('tracks').collect()) await ctx.db.delete(t._id)
     for (const o of await ctx.db.query('organizations').collect()) await ctx.db.delete(o._id)
@@ -199,6 +265,33 @@ export const run = internalMutation({
       })
     }
 
-    return `Seeded ${ORGS.length} orgs, ${TRACKS.length} tracks, ${CANDIDATES.length} candidates, ${APPS.length} applications.`
+    let taskCount = 0
+    for (const e of ENROLLMENTS) {
+      const enrollmentId = await ctx.db.insert('enrollments', {
+        trackId: tbTrackId,
+        candidateId: candIdByName[e.name],
+        mentorName: 'Wei Chen',
+        status: e.status,
+        weekProgress: e.weekProgress,
+        totalWeeks: e.totalWeeks,
+        hoursCommitted: e.hoursCommitted,
+        fit: e.fit,
+        feedback: e.feedback,
+      })
+      let order = 0
+      for (const t of e.tasks) {
+        await ctx.db.insert('tasks', {
+          enrollmentId,
+          title: t.title,
+          status: t.status,
+          dueLabel: t.dueLabel,
+          mentorNote: t.mentorNote,
+          order: order++,
+        })
+        taskCount++
+      }
+    }
+
+    return `Seeded ${ORGS.length} orgs, ${TRACKS.length} tracks, ${CANDIDATES.length} candidates, ${APPS.length} applications, ${ENROLLMENTS.length} enrollments, ${taskCount} tasks.`
   },
 })
