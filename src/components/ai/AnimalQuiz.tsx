@@ -1,6 +1,14 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import gsap from 'gsap'
 import {
   ANIMALS,
   QUIZ_QUESTIONS,
@@ -15,6 +23,25 @@ import {
   type TraitKey,
 } from '../../lib/domain'
 import { Badge, Button, Card, Eyebrow, ProgressBar } from '../ui'
+
+/* ------------------------------------------------------------------ */
+/*  Animation helpers (GSAP, React-safe — no @gsap/react)              */
+/* ------------------------------------------------------------------ */
+
+/** useLayoutEffect on the client, useEffect on the server (no SSR warning). */
+const useIso = typeof window !== 'undefined' ? useLayoutEffect : useEffect
+
+/**
+ * Users who ask for reduced motion get the final state with no motion.
+ * Every effect below early-returns on this before touching GSAP, so the
+ * DOM is never masked and nothing depends on JS running to be visible.
+ */
+function prefersReducedMotion(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+}
 
 /* ------------------------------------------------------------------ */
 /*  The 12 Animals — quick work-style quiz                            */
@@ -57,6 +84,9 @@ export default function AnimalQuiz({
   className = '',
 }: AnimalQuizProps) {
   const total = QUIZ_QUESTIONS.length
+
+  // Scope for the per-question entrance animation (the question block).
+  const questionRef = useRef<HTMLDivElement | null>(null)
 
   // One slot per question; null until answered.
   const [answers, setAnswers] = useState<(QuizOption | null)[]>(() =>
@@ -138,6 +168,24 @@ export default function AnimalQuiz({
     return () => window.removeEventListener('keydown', onKey)
   }, [result, question, current, step, select, goNext, goBack])
 
+  // Re-run a snappy entrance whenever the question changes (including the
+  // fresh mount after a Retake). Scoped + reverted so Fast Refresh and
+  // step changes never leak inline styles or double-run.
+  useIso(() => {
+    const root = questionRef.current
+    if (result || !root || prefersReducedMotion()) return
+    const ctx = gsap.context(() => {
+      gsap.from('[data-anim="q-item"]', {
+        y: 16,
+        autoAlpha: 0,
+        stagger: 0.05,
+        duration: 0.4,
+        ease: 'power2.out',
+      })
+    }, root)
+    return () => ctx.revert()
+  }, [step, result])
+
   if (result) {
     return (
       <ResultView
@@ -169,11 +217,14 @@ export default function AnimalQuiz({
       </div>
 
       {/* ---------- Question ---------- */}
-      <div className="px-6 py-7 sm:px-8">
-        <h2 className="text-xl font-black tracking-tight text-ink sm:text-2xl">
+      <div ref={questionRef} className="px-6 py-7 sm:px-8">
+        <h2
+          data-anim="q-item"
+          className="text-xl font-black tracking-tight text-ink sm:text-2xl"
+        >
           {question.prompt}
         </h2>
-        <p className="mt-2 text-xs text-ink-faint">
+        <p data-anim="q-item" className="mt-2 text-xs text-ink-faint">
           Pick the option that fits you best — press 1–{question.options.length},
           or click.
         </p>
@@ -188,6 +239,7 @@ export default function AnimalQuiz({
             return (
               <button
                 key={option.id}
+                data-anim="q-item"
                 type="button"
                 role="radio"
                 aria-checked={selected}
@@ -251,6 +303,9 @@ function ResultView({
 }) {
   const animal = ANIMALS[result.animalKey]
 
+  // Scope for the result-reveal timeline.
+  const rootRef = useRef<HTMLDivElement | null>(null)
+
   // Traits, ordered strongest-first for a punchier readout.
   const orderedTraits = useMemo(
     () =>
@@ -258,19 +313,78 @@ function ResultView({
     [result.traits],
   )
 
+  // Reveal timeline: emoji pops in, headline + tagline rise, suited-tag
+  // badges stagger in, then the trait bars fill from empty to their value.
+  // Scoped to the root and reverted on unmount (Retake) / Fast Refresh.
+  useIso(() => {
+    const root = rootRef.current
+    if (!root || prefersReducedMotion()) return
+    const ctx = gsap.context(() => {
+      // The bar fills carry a CSS width transition; neutralise it so the
+      // scaleX tween is the single source of motion (no width animation).
+      const fills = gsap.utils.toArray<HTMLElement>(
+        '[data-anim="trait-list"] [role="progressbar"] > div',
+      )
+      gsap.set(fills, { transition: 'none' })
+
+      const tl = gsap.timeline({ defaults: { ease: 'power2.out' } })
+      tl.from('[data-anim="emoji"]', {
+        scale: 0.6,
+        autoAlpha: 0,
+        duration: 0.5,
+        ease: 'back.out(1.6)',
+      })
+        .from(
+          '[data-anim="headline"]',
+          { y: 14, autoAlpha: 0, stagger: 0.06, duration: 0.4 },
+          '-=0.2',
+        )
+        .from(
+          '.anim-badge',
+          { y: 10, scale: 0.9, autoAlpha: 0, stagger: 0.06, duration: 0.35 },
+          '-=0.15',
+        )
+        .fromTo(
+          fills,
+          { scaleX: 0 },
+          {
+            scaleX: 1,
+            transformOrigin: 'left center',
+            stagger: 0.06,
+            duration: 0.5,
+          },
+          '-=0.1',
+        )
+    }, root)
+    return () => ctx.revert()
+  }, [])
+
   return (
     <Card className={`overflow-hidden ${className}`}>
+      <div ref={rootRef}>
       {/* ---------- Hero ---------- */}
       <div className="border-b border-line bg-paper px-6 py-8 text-center sm:px-8 sm:py-10">
         <Eyebrow>Your work-style animal</Eyebrow>
-        <div className="mt-4 text-6xl leading-none sm:text-7xl" aria-hidden="true">
+        <div
+          data-anim="emoji"
+          className="mt-4 text-6xl leading-none sm:text-7xl"
+          aria-hidden="true"
+        >
           {animal.emoji}
         </div>
-        <h2 className="mt-4 text-3xl font-black tracking-tight text-ink sm:text-4xl">
+        <h2
+          data-anim="headline"
+          className="mt-4 text-3xl font-black tracking-tight text-ink sm:text-4xl"
+        >
           {animal.name}
         </h2>
-        <p className="mt-2 text-sm font-semibold text-gold">{animal.tagline}</p>
-        <p className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-ink-soft">
+        <p data-anim="headline" className="mt-2 text-sm font-semibold text-gold">
+          {animal.tagline}
+        </p>
+        <p
+          data-anim="headline"
+          className="mx-auto mt-4 max-w-xl text-sm leading-relaxed text-ink-soft"
+        >
           {animal.description}
         </p>
       </div>
@@ -282,7 +396,7 @@ function ResultView({
         </span>
         <div className="mt-3 flex flex-wrap gap-2">
           {animal.suitedTags.map((tag) => (
-            <Badge key={tag} tone="slate">
+            <Badge key={tag} tone="slate" className="anim-badge">
               {tag}
             </Badge>
           ))}
@@ -294,7 +408,7 @@ function ResultView({
         <span className="text-[11px] font-bold uppercase tracking-[0.12em] text-ink-faint">
           Your trait mix
         </span>
-        <div className="mt-4 space-y-4">
+        <div data-anim="trait-list" className="mt-4 space-y-4">
           {orderedTraits.map((key) => (
             <div key={key}>
               <div className="mb-1.5 flex items-baseline justify-between">
@@ -319,6 +433,7 @@ function ResultView({
         <Button variant="secondary" onClick={onRetake}>
           Retake
         </Button>
+      </div>
       </div>
     </Card>
   )
