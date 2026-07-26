@@ -60,13 +60,14 @@ export function CompanyLogo({
 
   const icon = ICONS[slug]
   if (!icon) {
-    const initials = name
-      .split(/\s+/)
-      .filter(Boolean)
-      .slice(0, 2)
-      .map((w) => w[0])
-      .join('')
-      .toUpperCase()
+    const initials =
+      (name ?? '')
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((w) => w[0])
+        .join('')
+        .toUpperCase() || '?'
     return (
       <div
         className={`flex shrink-0 items-center justify-center text-sm font-black tracking-tight text-ink ${className}`}
