@@ -174,8 +174,8 @@ export function Hero({
               </ul>
             </div>
 
-            {/* footer */}
-            <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-line pt-4">
+            {/* footer — right-aligned on desktop so the floating chip clears the badges */}
+            <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-line pt-4 sm:justify-end">
               <Badge tone="slate">Real project</Badge>
               <Badge tone="gold">Mentor feedback</Badge>
               <Badge tone="neutral">Low-stakes</Badge>
