@@ -20,6 +20,7 @@ import type * as seed from "../seed.js";
 import type * as sponsorships from "../sponsorships.js";
 import type * as tasks from "../tasks.js";
 import type * as tracks from "../tracks.js";
+import type * as university from "../university.js";
 import type * as users from "../users.js";
 
 import type {
@@ -41,6 +42,7 @@ declare const fullApi: ApiFromModules<{
   sponsorships: typeof sponsorships;
   tasks: typeof tasks;
   tracks: typeof tracks;
+  university: typeof university;
   users: typeof users;
 }>;
 

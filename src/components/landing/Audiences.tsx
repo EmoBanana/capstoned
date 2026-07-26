@@ -1,5 +1,6 @@
 'use client'
 
+import Link from 'next/link'
 import { Eyebrow, Badge } from '../ui'
 import { UserIcon, BuildingIcon, CapIcon } from './icons'
 
@@ -15,6 +16,7 @@ const AUDIENCES: {
   detail: string
   points: string[]
   icon: (p: { className?: string }) => React.JSX.Element
+  href?: string
 }[] = [
   {
     tag: 'Candidates',
@@ -39,6 +41,7 @@ const AUDIENCES: {
       'Understand where students are heading and where mismatches are averted early: insight, never a gate.',
     points: ['Cohort engagement', 'Mismatch averted', 'Never gatekeeping'],
     icon: CapIcon,
+    href: '/university/dashboard',
   },
 ]
 
@@ -60,12 +63,21 @@ export function Audiences() {
         <div className="mt-12 grid gap-5 md:grid-cols-3">
           {AUDIENCES.map((a) => {
             const Icon = a.icon
+            const cardClass =
+              'flex flex-col border border-line bg-white p-7 rounded-[2px] transition-colors duration-150 hover:border-line-strong'
+            const Wrapper = a.href
+              ? ({ children }: { children: React.ReactNode }) => (
+                  <Link href={a.href!} data-reveal className={`${cardClass} hover:border-ink`}>
+                    {children}
+                  </Link>
+                )
+              : ({ children }: { children: React.ReactNode }) => (
+                  <div data-reveal className={cardClass}>
+                    {children}
+                  </div>
+                )
             return (
-              <div
-                key={a.tag}
-                data-reveal
-                className="flex flex-col border border-line bg-white p-7 rounded-[2px] transition-colors duration-150 hover:border-line-strong"
-              >
+              <Wrapper key={a.tag}>
                 <div className="flex items-center justify-between">
                   <span className="inline-flex h-11 w-11 items-center justify-center border border-line-strong bg-cream text-ink rounded-[2px]">
                     <Icon className="h-5 w-5" />
@@ -84,7 +96,7 @@ export function Audiences() {
                     </li>
                   ))}
                 </ul>
-              </div>
+              </Wrapper>
             )
           })}
         </div>
