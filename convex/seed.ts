@@ -235,6 +235,7 @@ const ENROLLMENTS: SeedEnrollment[] = [
 export const run = internalMutation({
   args: {},
   handler: async (ctx) => {
+    for (const r of await ctx.db.query('reliabilityEvents').collect()) await ctx.db.delete(r._id)
     for (const s of await ctx.db.query('sponsorships').collect()) await ctx.db.delete(s._id)
     for (const t of await ctx.db.query('tasks').collect()) await ctx.db.delete(t._id)
     for (const e of await ctx.db.query('enrollments').collect()) await ctx.db.delete(e._id)

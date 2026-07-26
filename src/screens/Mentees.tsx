@@ -227,6 +227,7 @@ function MenteeDetail({ mentee }: { mentee: MenteeData }) {
 
 export default function Mentees() {
   const data = useQuery(api.enrollments.menteesForOrg, { orgSlug: ORG_SLUG })
+  const orgRel = useQuery(api.reliability.orgScore, { orgSlug: ORG_SLUG })
   const [selectedId, setSelectedId] = useState<string | null>(null)
 
   if (data === undefined) {
@@ -267,7 +268,7 @@ export default function Mentees() {
             <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-ink-faint">Cohort</div>
             <div className="text-xs font-medium text-ink-soft">{mentees.length} mentees enrolled</div>
           </div>
-          <ReliabilityScore value={98} label="Company" />
+          <ReliabilityScore value={orgRel?.score ?? 98} label="Company" />
         </div>
       </div>
 

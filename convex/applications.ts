@@ -2,6 +2,7 @@ import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 import type { QueryCtx } from './_generated/server'
+import { recordEvent } from './reliability'
 
 const STATUS = v.union(v.literal('pending'), v.literal('accepted'), v.literal('declined'))
 
@@ -96,6 +97,21 @@ export const forOrg = query({
 export const setStatus = mutation({
   args: { applicationId: v.id('applications'), status: STATUS },
   handler: async (ctx, { applicationId, status }) => {
+    const app = await ctx.db.get(applicationId)
     await ctx.db.patch(applicationId, { status })
+    if (status === 'accepted' && app) {
+      const track = await ctx.db.get(app.trackId)
+      const org = track ? (await ctx.db.query('organizations').collect()).find((o) => o.slug === track.orgSlug) : null
+      if (org) {
+        const onTime = Date.now() <= app.slaDueAt
+        await recordEvent(
+          ctx,
+          'organization',
+          org._id,
+          onTime ? 1 : -8,
+          onTime ? 'Interviewed an applicant within SLA' : 'Missed the interview SLA',
+        )
+      }
+    }
   },
 })

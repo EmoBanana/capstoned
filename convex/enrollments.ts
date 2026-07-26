@@ -3,6 +3,7 @@ import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 import type { QueryCtx } from './_generated/server'
 import type { Id } from './_generated/dataModel'
+import { clampScore, deltaSum } from './reliability'
 
 async function resolveCandidate(ctx: QueryCtx) {
   const userId = await getAuthUserId(ctx)
@@ -45,7 +46,7 @@ export const menteesForOrg = query({
           university: c?.university ?? '',
           program: c?.program ?? '',
           animalKey: c?.animalKey ?? 'owl',
-          reliability: c?.reliabilityScore ?? 0,
+          reliability: clampScore(c?.reliabilityScore ?? 100, await deltaSum(ctx, 'candidate', e.candidateId)),
           status: e.status,
           weekProgress: e.weekProgress,
           totalWeeks: e.totalWeeks,

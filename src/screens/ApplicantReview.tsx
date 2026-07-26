@@ -91,6 +91,7 @@ type Applicant = {
 
 export default function ApplicantReview() {
   const data = useQuery(api.applications.forOrg, { orgSlug: ORG_SLUG })
+  const orgRel = useQuery(api.reliability.orgScore, { orgSlug: ORG_SLUG })
   const setStatus = useMutation(api.applications.setStatus)
   const [sortKey, setSortKey] = useState<SortKey>('match-desc')
 
@@ -139,9 +140,21 @@ export default function ApplicantReview() {
             </div>
             <div className="text-xs font-medium text-ink-soft">Responses within {data?.slaHours ?? 48}h</div>
           </div>
-          <ReliabilityScore value={98} />
+          <ReliabilityScore value={orgRel?.score ?? 98} />
         </div>
       </div>
+
+      {orgRel && orgRel.events.length > 0 && (
+        <p className="mt-3 text-xs text-ink-faint">
+          Reliability {orgRel.score}% (base {orgRel.base}) ·{' '}
+          {orgRel.events.map((e, i) => (
+            <span key={i} className={e.delta < 0 ? 'text-danger' : 'text-success'}>
+              {e.delta > 0 ? '+' : ''}{e.delta} {e.reason}
+              {i < orgRel.events.length - 1 ? ' · ' : ''}
+            </span>
+          ))}
+        </p>
+      )}
 
       <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Card className="p-5">

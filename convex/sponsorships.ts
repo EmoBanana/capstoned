@@ -2,6 +2,7 @@ import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 import type { Id } from './_generated/dataModel'
+import { recordEvent } from './reliability'
 
 const TYPE = v.union(v.literal('milestone'), v.literal('period'))
 const COMMITMENT = v.union(v.literal('contract'), v.literal('priority-hiring'))
@@ -51,7 +52,11 @@ export const offer = mutation({
 export const respond = mutation({
   args: { sponsorshipId: v.id('sponsorships'), status: v.union(v.literal('accepted'), v.literal('declined')) },
   handler: async (ctx, { sponsorshipId, status }) => {
+    const s = await ctx.db.get(sponsorshipId)
     await ctx.db.patch(sponsorshipId, { status })
+    if (status === 'accepted' && s) {
+      await recordEvent(ctx, 'candidate', s.candidateId, 2, 'Accepted a sponsorship commitment')
+    }
   },
 })
 

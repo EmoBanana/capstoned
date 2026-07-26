@@ -32,6 +32,7 @@ beforeEach(() => {
     const name = getFunctionName(ref as Parameters<typeof getFunctionName>[0])
     if (name.includes('enrollments')) return DATA
     if (name.includes('sponsorships')) return null
+    if (name.includes('reliability')) return { score: 98, base: 98, events: [] }
     return undefined
   })
 })

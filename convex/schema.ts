@@ -150,4 +150,13 @@ export default defineSchema({
   })
     .index('by_enrollment', ['enrollmentId'])
     .index('by_candidate', ['candidateId']),
+
+  // Append-only log; reliability scores are derived from a base + these deltas.
+  reliabilityEvents: defineTable({
+    subjectKind: v.union(v.literal('candidate'), v.literal('organization')),
+    subjectId: v.string(),
+    delta: v.number(),
+    reason: v.string(),
+    createdAt: v.number(),
+  }).index('by_subject', ['subjectKind', 'subjectId']),
 })

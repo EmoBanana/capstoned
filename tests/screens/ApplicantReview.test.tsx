@@ -31,7 +31,9 @@ beforeEach(() => {
   setStatusSpy.mockClear()
   useQueryMock.mockImplementation((ref: unknown) => {
     const name = getFunctionName(ref as Parameters<typeof getFunctionName>[0])
-    return name.includes('applications') ? DATA : undefined
+    if (name.includes('applications')) return DATA
+    if (name.includes('reliability')) return { score: 98, base: 98, events: [] }
+    return undefined
   })
 })
 
