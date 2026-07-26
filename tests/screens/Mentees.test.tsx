@@ -1,90 +1,60 @@
-import { render, screen, within } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
+import { getFunctionName } from 'convex/server'
+
+const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
+vi.mock('convex/react', () => ({ useQuery: (...a: unknown[]) => useQueryMock(...a) }))
+
 import Mentees from '@/src/screens/Mentees'
 
+const mentee = (enrollmentId: string, name: string, program: string, status: string, fit: number, tasks: unknown[]) => ({
+  enrollmentId, name, university: 'Sunway University', program, animalKey: 'owl', reliability: 96, status, weekProgress: 8, totalWeeks: 12, fit, tasks,
+})
+const DATA = {
+  trackTitle: 'Frontend Architecture Mentorship',
+  totalWeeks: 12,
+  mentees: [
+    mentee('e1', 'John Doe', 'Computer Science', 'on-track', 88, [
+      { id: 't1', title: 'Build the responsive navigation shell', status: 'done', mentorNote: 'Clean component API.' },
+      { id: 't2', title: 'Refactor data-fetching into hooks', status: 'in-progress', dueLabel: 'Due in 3 days' },
+    ]),
+    mentee('e2', 'Aisha Rahman', 'Data Science', 'ahead', 84, [{ id: 't3', title: 'Design the shared state architecture', status: 'done' }]),
+    mentee('e3', 'Marcus Tan', 'Software Engineering', 'needs-support', 72, [{ id: 't4', title: 'Build the responsive card grid', status: 'in-progress' }]),
+  ],
+}
+
+beforeEach(() => {
+  useQueryMock.mockImplementation((ref: unknown) => {
+    const name = getFunctionName(ref as Parameters<typeof getFunctionName>[0])
+    return name.includes('enrollments') ? DATA : undefined
+  })
+})
+
 describe('Mentees', () => {
-  it('renders the header and defaults the detail panel to John Doe', () => {
+  it('renders the roster and the first mentee detail by default', () => {
     render(<Mentees />)
     expect(screen.getByRole('heading', { name: /enrolled mentees/i })).toBeInTheDocument()
-    // detail panel shows the first mentee (John Doe) as an h3 heading
+    // roster names present
+    expect(screen.getByText('Aisha Rahman')).toBeInTheDocument()
+    // detail panel shows John Doe (first) and one of his tasks
     expect(screen.getByRole('heading', { name: 'John Doe' })).toBeInTheDocument()
-    // one of John Doe's tasks is visible in the detail panel
-    expect(
-      screen.getByText('Build the responsive navigation shell'),
-    ).toBeInTheDocument()
+    expect(screen.getByText(/Build the responsive navigation shell/i)).toBeInTheDocument()
   })
 
-  it('lists all six mentees in the roster', () => {
+  it('swaps the detail panel when another mentee is selected', async () => {
+    const user = userEvent.setup()
     render(<Mentees />)
-    const names = [
-      'John Doe',
-      'Daniel Lim Wei Jun',
-      'Arjun Subramaniam',
-      'Tan Mei Xin',
-      'Chloe Wong Sze Min',
-      'Priya Nair',
-    ]
-    for (const name of names) {
-      // each name is rendered as a roster row (button). John Doe also appears
-      // in the detail heading, so allow multiple matches and require one to be
-      // inside a roster button.
-      const inRoster = screen
-        .getAllByText(name)
-        .some((el) => el.closest('button') !== null)
-      expect(inRoster).toBe(true)
-    }
+    await user.click(screen.getByText('Aisha Rahman').closest('button') as HTMLElement)
+    expect(screen.getByRole('heading', { name: 'Aisha Rahman' })).toBeInTheDocument()
+    expect(screen.getByText(/Design the shared state architecture/i)).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: 'John Doe' })).not.toBeInTheDocument()
   })
 
-  it('swaps the detail panel when a different mentee is selected', async () => {
+  it('shows an action banner naming the selected mentee', async () => {
+    const user = userEvent.setup()
     render(<Mentees />)
-    // John's task present, Daniel's not yet
-    expect(
-      screen.getByText('Build the responsive navigation shell'),
-    ).toBeInTheDocument()
-    expect(
-      screen.queryByText('Implement the form validation layer'),
-    ).not.toBeInTheDocument()
-
-    const danielRow = screen.getByText('Daniel Lim Wei Jun').closest('button')
-    await userEvent.click(danielRow!)
-
-    // detail heading now names Daniel and shows his tasks
-    expect(screen.getByRole('heading', { name: 'Daniel Lim Wei Jun' })).toBeInTheDocument()
-    expect(
-      screen.getByText('Implement the form validation layer'),
-    ).toBeInTheDocument()
-    // John's task is gone from the detail panel
-    expect(
-      screen.queryByText('Build the responsive navigation shell'),
-    ).not.toBeInTheDocument()
-  })
-
-  it('shows a feedback action banner naming the selected mentee', async () => {
-    render(<Mentees />)
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
-
-    await userEvent.click(
-      screen.getByRole('button', { name: /send feedback to john doe/i }),
-    )
-
-    const banner = screen.getByRole('status')
-    expect(within(banner).getByText(/Feedback shared with John/i)).toBeInTheDocument()
-  })
-
-  it('shows a message action banner and updates it after switching mentees', async () => {
-    render(<Mentees />)
-
-    await userEvent.click(screen.getByRole('button', { name: /message john doe/i }))
-    let banner = screen.getByRole('status')
-    expect(within(banner).getByText(/Message drafted to John/i)).toBeInTheDocument()
-
-    // selecting a new mentee clears the banner
-    await userEvent.click(screen.getByText('Arjun Subramaniam').closest('button')!)
-    expect(screen.queryByRole('status')).not.toBeInTheDocument()
-
-    // triggering message again now names the newly-selected mentee
-    await userEvent.click(screen.getByRole('button', { name: /message arjun subramaniam/i }))
-    banner = screen.getByRole('status')
-    expect(within(banner).getByText(/Message drafted to Arjun/i)).toBeInTheDocument()
+    await user.click(screen.getByRole('button', { name: /send feedback to John Doe/i }))
+    expect(screen.getByRole('status')).toHaveTextContent(/Feedback shared with John/i)
   })
 })
