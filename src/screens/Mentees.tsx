@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import type { Id } from '@/convex/_generated/dataModel'
-import { Page, Card, Badge, Button, ProgressBar, Eyebrow, ReliabilityScore, Field, Input, Select } from '../components/ui'
+import { Page, Card, Badge, Button, ProgressBar, Eyebrow, ReliabilityScore, Field, Input, Select, Textarea } from '../components/ui'
 import MicroBondContract from '../components/MicroBondContract'
 
 /* ------------------------------------------------------------------ */
@@ -16,6 +16,7 @@ type MenteeStatus = 'ahead' | 'on-track' | 'needs-support' | 'at-risk'
 type TaskStatus = 'todo' | 'in-progress' | 'submitted' | 'done' | 'blocked'
 type MenteeData = {
   enrollmentId: string
+  mentorName: string
   name: string
   university: string
   program: string
@@ -58,7 +59,10 @@ function Monogram({ initials, size = 'md' }: { initials: string; size?: 'md' | '
 function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: string }) {
   const sponsorship = useQuery(api.sponsorships.forEnrollment, { enrollmentId: mentee.enrollmentId as Id<'enrollments'> })
   const offer = useMutation(api.sponsorships.offer)
-  const [action, setAction] = useState<'feedback' | 'message' | null>(null)
+  const addFeedback = useMutation(api.enrollments.addFeedback)
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackText, setFeedbackText] = useState('')
+  const [sent, setSent] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [showContract, setShowContract] = useState(false)
   const [amount, setAmount] = useState('3000')
@@ -73,11 +77,6 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
     active: mentee.tasks.filter((t) => t.status === 'in-progress' || t.status === 'todo').length,
     blocked: mentee.tasks.filter((t) => t.status === 'blocked').length,
   }
-  const actionCopy = {
-    feedback: `Feedback shared with ${firstName}. Wei Chen has been copied on the thread.`,
-    message: `Message drafted to ${firstName}. Open your inbox to continue the conversation.`,
-  }
-
   const submitOffer = () => {
     void offer({
       enrollmentId: mentee.enrollmentId as Id<'enrollments'>,
@@ -106,18 +105,38 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
           </div>
         </div>
         <div className="flex shrink-0 flex-wrap items-center gap-2">
-          <Button size="sm" variant="secondary" onClick={() => setAction('message')} aria-label={`Message ${mentee.name}`}>Message</Button>
-          <Button size="sm" variant="secondary" onClick={() => setAction('feedback')} aria-label={`Send feedback to ${mentee.name}`}>Send feedback</Button>
+          <Button size="sm" variant="secondary" onClick={() => { setFeedbackOpen((v) => !v); setSent(false) }} aria-label={`Send feedback to ${mentee.name}`}>Send feedback</Button>
           {!sponsorship && (
             <Button size="sm" onClick={() => setModalOpen(true)} aria-label={`Offer micro-bond to ${mentee.name}`}>Offer micro-bond</Button>
           )}
         </div>
       </div>
 
-      {action && (
-        <div role="status" className="mt-6 flex items-start justify-between gap-3 rounded-[2px] border border-success/30 bg-success-soft px-4 py-3">
-          <p className="text-sm font-medium text-success-ink">{actionCopy[action]}</p>
-          <button type="button" onClick={() => setAction(null)} aria-label="Dismiss notice" className="shrink-0 text-success-ink/70 hover:text-success-ink">✕</button>
+      {feedbackOpen && (
+        <div className="mt-6 rounded-[2px] border border-line bg-paper p-4">
+          <Field label={`Feedback to ${firstName}`} hint="the mentee sees this in their mentorship">
+            <Textarea
+              rows={3}
+              value={feedbackText}
+              onChange={(e) => { setFeedbackText(e.target.value); setSent(false) }}
+              placeholder="Share progress notes or guidance — real, and visible to the mentee."
+            />
+          </Field>
+          <div className="mt-3 flex items-center justify-end gap-2">
+            {sent && <span className="mr-auto text-xs font-medium text-success-ink">✓ Sent to {firstName}</span>}
+            <Button size="sm" variant="ghost" onClick={() => { setFeedbackOpen(false); setFeedbackText('') }}>Close</Button>
+            <Button
+              size="sm"
+              disabled={feedbackText.trim().length < 2}
+              onClick={async () => {
+                await addFeedback({ enrollmentId: mentee.enrollmentId as Id<'enrollments'>, body: feedbackText.trim() })
+                setFeedbackText('')
+                setSent(true)
+              }}
+            >
+              Send feedback
+            </Button>
+          </div>
         </div>
       )}
 
@@ -190,7 +209,7 @@ function MenteeDetail({ mentee, trackTitle }: { mentee: MenteeData; trackTitle: 
                 )}
                 {t.mentorNote && (
                   <div className="mt-3 border-l-2 border-gold/40 bg-gold-soft/40 px-3 py-2">
-                    <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-ink-faint">Mentor note · Wei Chen</div>
+                    <div className="text-[10px] font-bold uppercase tracking-[0.1em] text-ink-faint">Mentor note · {mentee.mentorName}</div>
                     <p className="mt-0.5 text-xs leading-relaxed text-ink-soft">{t.mentorNote}</p>
                   </div>
                 )}

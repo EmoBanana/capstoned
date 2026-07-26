@@ -1,4 +1,4 @@
-import { query } from './_generated/server'
+import { mutation, query } from './_generated/server'
 import { v } from 'convex/values'
 import { getAuthUserId } from '@convex-dev/auth/server'
 import type { QueryCtx } from './_generated/server'
@@ -42,6 +42,7 @@ export const menteesForOrg = query({
         const c = await ctx.db.get(e.candidateId)
         return {
           enrollmentId: e._id as string,
+          mentorName: e.mentorName,
           name: c?.name ?? '—',
           university: c?.university ?? '',
           program: c?.program ?? '',
@@ -109,5 +110,26 @@ export const myMentorship = query({
       feedback: enrollment.feedback,
       tasks: await tasksFor(ctx, enrollment._id),
     }
+  },
+})
+
+/** A mentor leaves real feedback on an enrollment; it appears in the student's
+ *  mentorship view. Appends to the enrollment's feedback log. */
+export const addFeedback = mutation({
+  args: { enrollmentId: v.id('enrollments'), body: v.string() },
+  handler: async (ctx, { enrollmentId, body }) => {
+    const text = body.trim()
+    if (!text) throw new Error('Feedback cannot be empty')
+    const enrollment = await ctx.db.get(enrollmentId)
+    if (!enrollment) throw new Error('Enrollment not found')
+
+    const userId = await getAuthUserId(ctx)
+    const user = userId ? await ctx.db.get(userId) : null
+    const author = user?.name || enrollment.mentorName || 'Mentor'
+    const when = new Date(Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' })
+
+    await ctx.db.patch(enrollmentId, {
+      feedback: [{ author, role: 'Mentor', when, body: text }, ...enrollment.feedback],
+    })
   },
 })

@@ -12,7 +12,7 @@ vi.mock('convex/react', () => ({
 import Mentees from '@/src/screens/Mentees'
 
 const mentee = (enrollmentId: string, name: string, program: string, status: string, fit: number, tasks: unknown[]) => ({
-  enrollmentId, name, university: 'Sunway University', program, animalKey: 'owl', reliability: 96, status, weekProgress: 8, totalWeeks: 12, fit, tasks,
+  enrollmentId, mentorName: 'Wei Chen', name, university: 'Sunway University', program, animalKey: 'owl', reliability: 96, status, weekProgress: 8, totalWeeks: 12, fit, tasks,
 })
 const DATA = {
   trackTitle: 'Frontend Architecture Mentorship',
@@ -57,10 +57,13 @@ describe('Mentees', () => {
     expect(screen.queryByRole('heading', { name: 'John Doe' })).not.toBeInTheDocument()
   })
 
-  it('shows an action banner naming the selected mentee', async () => {
+  it('opens a real feedback composer and confirms after sending', async () => {
     const user = userEvent.setup()
     render(<Mentees />)
     await user.click(screen.getByRole('button', { name: /send feedback to John Doe/i }))
-    expect(screen.getByRole('status')).toHaveTextContent(/Feedback shared with John/i)
+    const box = screen.getByPlaceholderText(/visible to the mentee/i)
+    await user.type(box, 'Strong progress this week — keep it up.')
+    await user.click(screen.getByRole('button', { name: /^send feedback$/i }))
+    expect(screen.getByText(/sent to John/i)).toBeInTheDocument()
   })
 })
