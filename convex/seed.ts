@@ -1,4 +1,5 @@
 import { internalMutation } from './_generated/server'
+import type { Id } from './_generated/dataModel'
 
 /* Session B owns this data (Session A's mock-data.ts is gone). Shapes mirror
    src/lib/domain.ts so src/lib/matching.ts computeMatch() runs against it. */
@@ -158,19 +159,46 @@ const CANDIDATES = [
   },
 ]
 
+// Applications seeded to the recruiter's (Talentbank) track so the review queue
+// is populated. Scores approximate computeMatch; live applies compute the exact fit.
+const APPS = [
+  { name: 'John Doe', matchScore: 90, hoursAgo: 38 },
+  { name: 'Priya Nair', matchScore: 64, hoursAgo: 20 },
+  { name: 'Marcus Tan', matchScore: 52, hoursAgo: 8 },
+  { name: 'Aisha Rahman', matchScore: 47, hoursAgo: 30 },
+]
+
 export const run = internalMutation({
   args: {},
   handler: async (ctx) => {
+    for (const a of await ctx.db.query('applications').collect()) await ctx.db.delete(a._id)
     for (const t of await ctx.db.query('tracks').collect()) await ctx.db.delete(t._id)
     for (const o of await ctx.db.query('organizations').collect()) await ctx.db.delete(o._id)
     for (const c of await ctx.db.query('candidates').collect()) await ctx.db.delete(c._id)
 
     for (const o of ORGS) await ctx.db.insert('organizations', { ...o, verified: true })
-    for (const t of TRACKS) {
-      await ctx.db.insert('tracks', { ...t, status: 'open' })
-    }
-    for (const c of CANDIDATES) await ctx.db.insert('candidates', c)
 
-    return `Seeded ${ORGS.length} orgs, ${TRACKS.length} tracks, ${CANDIDATES.length} candidates.`
+    const trackIdBySlug: Record<string, Id<'tracks'>> = {}
+    for (const t of TRACKS) trackIdBySlug[t.orgSlug] = await ctx.db.insert('tracks', { ...t, status: 'open' })
+
+    const candIdByName: Record<string, Id<'candidates'>> = {}
+    for (const c of CANDIDATES) candIdByName[c.name] = await ctx.db.insert('candidates', c)
+
+    const tbTrack = TRACKS.find((t) => t.orgSlug === 'talentbank')!
+    const tbTrackId = trackIdBySlug['talentbank']
+    const now = Date.now()
+    for (const ap of APPS) {
+      const appliedAt = now - ap.hoursAgo * 3600 * 1000
+      await ctx.db.insert('applications', {
+        trackId: tbTrackId,
+        candidateId: candIdByName[ap.name],
+        status: 'pending',
+        matchScore: ap.matchScore,
+        appliedAt,
+        slaDueAt: appliedAt + tbTrack.slaHours * 3600 * 1000,
+      })
+    }
+
+    return `Seeded ${ORGS.length} orgs, ${TRACKS.length} tracks, ${CANDIDATES.length} candidates, ${APPS.length} applications.`
   },
 })

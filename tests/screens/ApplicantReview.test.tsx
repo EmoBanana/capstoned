@@ -1,108 +1,75 @@
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { vi } from 'vitest'
+import { getFunctionName } from 'convex/server'
+
+const { useQueryMock, setStatusSpy } = vi.hoisted(() => ({
+  useQueryMock: vi.fn(),
+  setStatusSpy: vi.fn(),
+}))
+vi.mock('convex/react', () => ({
+  useQuery: (...args: unknown[]) => useQueryMock(...args),
+  useMutation: () => setStatusSpy,
+}))
+
 import ApplicantReview from '@/src/screens/ApplicantReview'
 
-// row[0] is the <thead> header row; row[1] is the first data row.
-function firstRowContains(name: string): boolean {
-  const dataRow = screen.getAllByRole('row')[1]
-  return within(dataRow).queryByText(name) !== null
+const now = Date.now()
+const h = (n: number) => n * 3_600_000
+const DATA = {
+  trackTitle: 'Frontend Architecture Mentorship',
+  cap: 50,
+  slaHours: 48,
+  applicants: [
+    { id: '1', name: 'John Doe', university: 'Sunway University', program: 'Computer Science', animalKey: 'owl', reliability: 96, matchScore: 90, status: 'pending', appliedAt: now - h(38), slaDueAt: now + h(10) },
+    { id: '2', name: 'Priya Nair', university: 'Monash University Malaysia', program: 'HCI', animalKey: 'peacock', reliability: 94, matchScore: 64, status: 'pending', appliedAt: now - h(20), slaDueAt: now + h(28) },
+    { id: '3', name: 'Marcus Tan', university: "Taylor's University", program: 'Software Engineering', animalKey: 'beaver', reliability: 90, matchScore: 52, status: 'pending', appliedAt: now - h(8), slaDueAt: now + h(40) },
+  ],
 }
 
+beforeEach(() => {
+  setStatusSpy.mockClear()
+  useQueryMock.mockImplementation((ref: unknown) => {
+    const name = getFunctionName(ref as Parameters<typeof getFunctionName>[0])
+    return name.includes('applications') ? DATA : undefined
+  })
+})
+
+const orderedNames = () =>
+  screen.getAllByText(/^(John Doe|Priya Nair|Marcus Tan)$/).map((e) => e.textContent)
+
 describe('ApplicantReview', () => {
-  it('renders the header, queue and the first applicant', () => {
+  it('renders the track, applicants, and real match scores', () => {
     render(<ApplicantReview />)
-    expect(
-      screen.getByRole('heading', { name: /Frontend Architecture Mentorship/i }),
-    ).toBeInTheDocument()
-    expect(screen.getByRole('heading', { name: /Application Queue/i })).toBeInTheDocument()
-    // a1 John Doe, Year 3 Sunway, match 94.
-    const johnRow = screen.getByText('John Doe').closest('tr')!
-    expect(within(johnRow).getByText('Year 3')).toBeInTheDocument()
-    expect(within(johnRow).getByText('Sunway University')).toBeInTheDocument()
-    expect(within(johnRow).getByText('94%')).toBeInTheDocument()
-    // All 8 applicants render.
-    expect(screen.getAllByText('Verified Student')).toHaveLength(8)
+    expect(screen.getByRole('heading', { name: /frontend architecture mentorship/i })).toBeInTheDocument()
+    expect(orderedNames()).toHaveLength(3)
+    const johnRow = screen.getByText('John Doe').closest('tr') as HTMLElement
+    expect(within(johnRow).getByText('90%')).toBeInTheDocument()
+    // John's SLA (10h left) is urgent; Marcus's (40h) is not.
+    expect(within(johnRow).getByText(/Remaining/i)).toBeInTheDocument()
+    const marcusRow = screen.getByText('Marcus Tan').closest('tr') as HTMLElement
+    expect(within(marcusRow).queryByText(/Remaining/i)).not.toBeInTheDocument()
   })
 
-  it('shows the stats row totals', () => {
+  it('reorders rows by the sort controls', async () => {
+    const user = userEvent.setup()
     render(<ApplicantReview />)
-    const totalCard = screen.getByText('Total Applicants').parentElement!
-    expect(within(totalCard).getByText('8')).toBeInTheDocument()
-
-    const capCard = screen.getByText('Cohort Capacity').closest('div')!.parentElement!.parentElement!
-    expect(within(capCard).getByText(/41/)).toBeInTheDocument()
-    expect(within(capCard).getByText(/\/ 50/)).toBeInTheDocument()
-
-    const riskCard = screen.getByText('SLA At Risk').closest('div')!.parentElement!.parentElement!
-    // a5 (9h), a1 (10h), a2 (12h) are under 16h remaining and still pending.
-    expect(within(riskCard).getByText('3')).toBeInTheDocument()
+    expect(orderedNames()[0]).toBe('John Doe') // Match: High (default)
+    await user.click(screen.getByRole('button', { name: /match: low/i }))
+    expect(orderedNames()[0]).toBe('Marcus Tan')
+    await user.click(screen.getByRole('button', { name: /sla: urgent/i }))
+    expect(orderedNames()[0]).toBe('John Doe')
   })
 
-  it('reorders rows when sort buttons are pressed', async () => {
+  it('accepts and declines via the Convex mutation', async () => {
+    const user = userEvent.setup()
     render(<ApplicantReview />)
-    // Default sort is Match: High -> John Doe (94) leads.
-    expect(firstRowContains('John Doe')).toBe(true)
+    const johnRow = screen.getByText('John Doe').closest('tr') as HTMLElement
+    await user.click(within(johnRow).getByRole('button', { name: /accept & interview/i }))
+    expect(setStatusSpy).toHaveBeenCalledWith({ applicationId: '1', status: 'accepted' })
 
-    await userEvent.click(screen.getByRole('button', { name: /Match: Low/i }))
-    // Lowest match is Joshua Tay Chee Keong (52).
-    expect(firstRowContains('Joshua Tay Chee Keong')).toBe(true)
-    expect(firstRowContains('John Doe')).toBe(false)
-
-    await userEvent.click(screen.getByRole('button', { name: /SLA: Urgent/i }))
-    // Least SLA remaining is Chloe Wong Sze Min (a5, 9h).
-    expect(firstRowContains('Chloe Wong Sze Min')).toBe(true)
-
-    await userEvent.click(screen.getByRole('button', { name: /Match: High/i }))
-    expect(firstRowContains('John Doe')).toBe(true)
-  })
-
-  it('flips a row to Interview Scheduled with Undo when accepted', async () => {
-    render(<ApplicantReview />)
-    const johnRow = () => screen.getByText('John Doe').closest('tr')!
-
-    // Before: no Interview Scheduled badge on this row, Accept button present.
-    expect(within(johnRow()).queryByText('Interview Scheduled')).toBeNull()
-
-    await userEvent.click(within(johnRow()).getByRole('button', { name: /Accept & Interview/i }))
-
-    expect(within(johnRow()).getByText('Interview Scheduled')).toBeInTheDocument()
-    expect(within(johnRow()).getByRole('button', { name: /Undo/i })).toBeInTheDocument()
-    // Accept/Decline actions are gone for this row.
-    expect(within(johnRow()).queryByRole('button', { name: /Accept & Interview/i })).toBeNull()
-
-    // Capacity count ticks up from 41 to 42.
-    const capCard = screen.getByText('Cohort Capacity').closest('div')!.parentElement!.parentElement!
-    expect(within(capCard).getByText(/42/)).toBeInTheDocument()
-
-    // Undo restores the pending actions.
-    await userEvent.click(within(johnRow()).getByRole('button', { name: /Undo/i }))
-    expect(within(johnRow()).getByRole('button', { name: /Accept & Interview/i })).toBeInTheDocument()
-    expect(within(johnRow()).queryByText('Interview Scheduled')).toBeNull()
-  })
-
-  it('flips a row to Declined with Undo when declined', async () => {
-    render(<ApplicantReview />)
-    const danielRow = () => screen.getByText('Daniel Lim Wei Jun').closest('tr')!
-
-    await userEvent.click(within(danielRow()).getByRole('button', { name: /^Decline$/i }))
-
-    expect(within(danielRow()).getByText('Declined')).toBeInTheDocument()
-    expect(within(danielRow()).getByRole('button', { name: /Undo/i })).toBeInTheDocument()
-    expect(within(danielRow()).queryByRole('button', { name: /^Decline$/i })).toBeNull()
-  })
-
-  it('renders a red urgent SLA pill for rows under 16h remaining', () => {
-    render(<ApplicantReview />)
-    // John Doe: 38h ago -> 10h remaining -> urgent variant with "Remaining" suffix.
-    const johnRow = screen.getByText('John Doe').closest('tr')!
-    const urgentPill = within(johnRow).getByText(/SLA: 10h Remaining/i)
-    expect(urgentPill).toBeInTheDocument()
-    expect(urgentPill.className).toMatch(/danger/)
-
-    // Arjun Subramaniam: 8h ago -> 40h remaining -> non-urgent, no "Remaining" suffix.
-    const arjunRow = screen.getByText('Arjun Subramaniam').closest('tr')!
-    const calmPill = within(arjunRow).getByText(/SLA: 40h$/i)
-    expect(calmPill).toBeInTheDocument()
-    expect(calmPill.className).not.toMatch(/danger/)
+    const priyaRow = screen.getByText('Priya Nair').closest('tr') as HTMLElement
+    await user.click(within(priyaRow).getByRole('button', { name: /decline/i }))
+    expect(setStatusSpy).toHaveBeenCalledWith({ applicationId: '2', status: 'declined' })
   })
 })

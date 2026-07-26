@@ -1,8 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { useQuery } from 'convex/react'
+import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
+import type { Id } from '@/convex/_generated/dataModel'
 import { computeMatch } from '@/src/lib/matching'
 import type { CandidateProfile, Track as DomainTrack } from '@/src/lib/domain'
 import {
@@ -93,7 +94,17 @@ function fitTone(pct: number): 'success' | 'gold' | 'danger' {
   return pct >= 75 ? 'success' : pct >= 55 ? 'gold' : 'danger'
 }
 
-function TrackCard({ track, fit }: { track: TrackRow; fit: number | null }) {
+function TrackCard({
+  track,
+  fit,
+  applied,
+  onApply,
+}: {
+  track: TrackRow
+  fit: number | null
+  applied: boolean
+  onApply: () => void
+}) {
   const pct = Math.round((track.applicants / track.cap) * 100)
   const full = track.applicants >= track.cap
   const closingSoon = track.closesInDays <= 2
@@ -176,12 +187,16 @@ function TrackCard({ track, fit }: { track: TrackRow; fit: number | null }) {
           <ClockIcon />
           {track.closesInDays === 1 ? 'Closes tomorrow' : `Closes in ${track.closesInDays} days`}
         </span>
-        {full ? (
+        {applied ? (
+          <Button variant="secondary" size="sm" disabled>
+            ✓ Applied
+          </Button>
+        ) : full ? (
           <Button variant="secondary" size="sm" disabled>
             Join Waitlist
           </Button>
         ) : (
-          <Button variant="primary" size="sm">
+          <Button variant="primary" size="sm" onClick={onApply}>
             Apply
           </Button>
         )}
@@ -197,6 +212,9 @@ export default function Marketplace() {
 
   const trackData = useQuery(api.tracks.list)
   const candidate = useQuery(api.candidates.current)
+  const myTrackIds = useQuery(api.applications.myTrackIds)
+  const apply = useMutation(api.applications.apply)
+  const appliedSet = useMemo(() => new Set(myTrackIds ?? []), [myTrackIds])
   const loading = trackData === undefined || candidate === undefined
 
   const tracks = useMemo<TrackRow[]>(() => (trackData ?? []) as TrackRow[], [trackData])
@@ -363,7 +381,18 @@ export default function Marketplace() {
       ) : (
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
           {visible.map((track) => (
-            <TrackCard key={track.id} track={track} fit={fitById.get(track.id) ?? null} />
+            <TrackCard
+              key={track.id}
+              track={track}
+              fit={fitById.get(track.id) ?? null}
+              applied={appliedSet.has(track.id)}
+              onApply={() =>
+                void apply({
+                  trackId: track.id as Id<'tracks'>,
+                  matchScore: fitById.get(track.id) ?? 0,
+                })
+              }
+            />
           ))}
         </div>
       )}

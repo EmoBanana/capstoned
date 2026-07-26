@@ -4,7 +4,10 @@ import { beforeEach, vi } from 'vitest'
 import { getFunctionName } from 'convex/server'
 
 const { useQueryMock } = vi.hoisted(() => ({ useQueryMock: vi.fn() }))
-vi.mock('convex/react', () => ({ useQuery: (...args: unknown[]) => useQueryMock(...args) }))
+vi.mock('convex/react', () => ({
+  useQuery: (...args: unknown[]) => useQueryMock(...args),
+  useMutation: () => vi.fn(),
+}))
 
 import Marketplace from '@/src/screens/Marketplace'
 
@@ -35,6 +38,7 @@ beforeEach(() => {
     const name = getFunctionName(ref as Parameters<typeof getFunctionName>[0])
     if (name.includes('tracks')) return TRACKS
     if (name.includes('candidates')) return CANDIDATE
+    if (name.includes('applications')) return []
     return undefined
   })
 })

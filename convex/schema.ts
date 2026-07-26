@@ -85,4 +85,15 @@ export default defineSchema({
     animalKey: v.string(),
     reliabilityScore: v.number(),
   }).index('by_user', ['userId']),
+
+  applications: defineTable({
+    trackId: v.id('tracks'),
+    candidateId: v.id('candidates'),
+    status: v.union(v.literal('pending'), v.literal('accepted'), v.literal('declined')),
+    matchScore: v.number(),
+    appliedAt: v.number(),
+    slaDueAt: v.number(),
+  })
+    .index('by_track', ['trackId'])
+    .index('by_candidate', ['candidateId']),
 })
