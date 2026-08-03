@@ -124,12 +124,34 @@ export default function MicroBondContract({
   const rows = clauses(s, studentName, trackTitle)
 
   const print = () => {
-    const w = window.open('', '_blank', 'width=800,height=900')
-    if (!w) return
-    w.document.write(buildContractHtml(s, studentName, trackTitle))
-    w.document.close()
-    w.focus()
-    w.print()
+    // Print via a hidden iframe rather than window.open. A blank popup is
+    // blocked by default on real domains (e.g. the Vercel deployment), which
+    // silently did nothing; an iframe needs no popup permission.
+    const html = buildContractHtml(s, studentName, trackTitle)
+    const frame = document.createElement('iframe')
+    frame.setAttribute('aria-hidden', 'true')
+    frame.style.position = 'fixed'
+    frame.style.right = '0'
+    frame.style.bottom = '0'
+    frame.style.width = '0'
+    frame.style.height = '0'
+    frame.style.border = '0'
+    document.body.appendChild(frame)
+    const win = frame.contentWindow
+    const doc = win?.document
+    if (!win || !doc) {
+      frame.remove()
+      return
+    }
+    doc.open()
+    doc.write(html)
+    doc.close()
+    win.onafterprint = () => window.setTimeout(() => frame.remove(), 500)
+    // Let the document lay out before invoking the print dialog.
+    window.setTimeout(() => {
+      win.focus()
+      win.print()
+    }, 300)
   }
 
   return (
