@@ -466,23 +466,24 @@ export default function Mentees() {
       <div className="flex flex-col gap-4 border-b border-line pb-6 sm:flex-row sm:items-end sm:justify-between">
         <div>
           <Eyebrow>Company · Mentees</Eyebrow>
-          {tracks.length > 1 ? (
-            <select
-              value={trackId ?? tracks[0]?.id ?? ''}
-              onChange={(e) => { setTrackId(e.target.value); setSelectedId(null) }}
-              aria-label="Choose a track"
-              className="mt-2 max-w-full border border-line-strong bg-cream px-2.5 py-1.5 text-2xl font-black tracking-tight text-ink rounded-[2px] focus:border-ink focus:outline-none sm:text-3xl"
-            >
-              {tracks.map((t) => (
-                <option key={t.id} value={t.id}>{t.title}</option>
-              ))}
-            </select>
-          ) : (
-            <h1 className="mt-2 text-2xl font-black tracking-tight text-ink sm:text-3xl">Enrolled mentees</h1>
-          )}
-          <p className="mt-1 text-sm font-medium text-ink-soft">
-            {data?.trackTitle} · {org?.name ?? '…'} · {data?.totalWeeks}-week track
-          </p>
+          <h1 className="mt-2 text-2xl font-black tracking-tight text-ink sm:text-3xl">Enrolled mentees</h1>
+          <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm font-medium text-ink-soft">
+            {tracks.length > 1 ? (
+              <select
+                value={trackId ?? tracks[0]?.id ?? ''}
+                onChange={(e) => { setTrackId(e.target.value); setSelectedId(null) }}
+                aria-label="Choose a track"
+                className="max-w-[16rem] truncate border border-line-strong bg-cream px-2 py-1 text-sm font-semibold text-ink rounded-[2px] focus:border-ink focus:outline-none"
+              >
+                {tracks.map((t) => (
+                  <option key={t.id} value={t.id}>{t.title}</option>
+                ))}
+              </select>
+            ) : (
+              <span>{data?.trackTitle}</span>
+            )}
+            <span>· {org?.name ?? '…'} · {data?.totalWeeks}-week track</span>
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
           <div className="hidden text-right sm:block">

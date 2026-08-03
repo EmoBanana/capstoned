@@ -57,6 +57,7 @@ export const saveProfile = mutation({
     availabilityHoursPerWeek: v.number(),
     animalKey: v.string(),
     name: v.optional(v.string()),
+    email: v.optional(v.string()),
     phone: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -68,12 +69,20 @@ export const saveProfile = mutation({
       .withIndex('by_user', (q) => q.eq('userId', userId))
       .first()
 
-    // Email is always the account's login email, so it is derived from the
-    // auth user, never taken from the client. Name and phone stay editable.
-    const { name, phone, ...rest } = args
+    const { name, email, phone, ...rest } = args
+    // Email is editable. When it changes we update the account (users) record
+    // too, so the login/account email and the profile stay in sync. An empty
+    // value keeps the current email rather than clearing it.
+    let effectiveEmail = user?.email ?? undefined
+    const newEmail = email?.trim()
+    if (newEmail) {
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(newEmail)) throw new ConvexError('Enter a valid email address')
+      if (newEmail !== user?.email) await ctx.db.patch(userId, { email: newEmail })
+      effectiveEmail = newEmail
+    }
     const contact = {
       ...(name !== undefined ? { name: name.trim() } : {}),
-      email: user?.email || undefined,
+      email: effectiveEmail,
       ...(phone !== undefined ? { phone: phone.trim() || undefined } : {}),
     }
     if (existing) {
@@ -83,7 +92,7 @@ export const saveProfile = mutation({
     return await ctx.db.insert('candidates', {
       userId,
       name: name?.trim() || user?.name || '',
-      email: user?.email || undefined,
+      email: effectiveEmail,
       phone: phone?.trim() || undefined,
       reliabilityScore: 95,
       ...rest,
