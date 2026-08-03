@@ -21,10 +21,14 @@ export const current = query({
   handler: async (ctx) => {
     const candidate = await myCandidate(ctx)
     if (!candidate) return null
+    const userId = await getAuthUserId(ctx)
+    const user = userId ? await ctx.db.get(userId) : null
     // Additive display field; `reliabilityScore` is left untouched so matching
-    // and every existing consumer keep the raw numeric value.
+    // and every existing consumer keep the raw numeric value. Email is always
+    // the account's login email, never a separately-edited value.
     return {
       ...candidate,
+      email: user?.email ?? candidate.email ?? '',
       resumeUrl: candidate.resumeStorageId ? await ctx.storage.getUrl(candidate.resumeStorageId) : null,
       reliabilityDisplay: await reliabilityDisplay(
         ctx,
@@ -53,7 +57,6 @@ export const saveProfile = mutation({
     availabilityHoursPerWeek: v.number(),
     animalKey: v.string(),
     name: v.optional(v.string()),
-    email: v.optional(v.string()),
     phone: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -65,10 +68,12 @@ export const saveProfile = mutation({
       .withIndex('by_user', (q) => q.eq('userId', userId))
       .first()
 
-    const { name, email, phone, ...rest } = args
+    // Email is always the account's login email, so it is derived from the
+    // auth user, never taken from the client. Name and phone stay editable.
+    const { name, phone, ...rest } = args
     const contact = {
       ...(name !== undefined ? { name: name.trim() } : {}),
-      ...(email !== undefined ? { email: email.trim() || undefined } : {}),
+      email: user?.email || undefined,
       ...(phone !== undefined ? { phone: phone.trim() || undefined } : {}),
     }
     if (existing) {
@@ -78,7 +83,7 @@ export const saveProfile = mutation({
     return await ctx.db.insert('candidates', {
       userId,
       name: name?.trim() || user?.name || '',
-      email: email?.trim() || undefined,
+      email: user?.email || undefined,
       phone: phone?.trim() || undefined,
       reliabilityScore: 95,
       ...rest,

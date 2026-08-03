@@ -79,7 +79,6 @@ export default function StudentSettings() {
     try {
       await saveProfile({
         name: name.trim(),
-        email: email.trim(),
         phone: phone.trim(),
         headline: headline.trim(),
         university: university.trim(),
@@ -133,7 +132,7 @@ export default function StudentSettings() {
           <div className="grid grid-cols-1 gap-5">
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field label="Full name"><Input value={name} onChange={(e) => { setName(e.target.value); dirty() }} placeholder="Your name" /></Field>
-              <Field label="Email" hint="optional"><Input type="email" value={email} onChange={(e) => { setEmail(e.target.value); dirty() }} placeholder="you@email.com" /></Field>
+              <Field label="Email" hint="your login email"><Input type="email" value={email} disabled readOnly className="opacity-70" /></Field>
             </div>
             <Field label="Phone" hint="optional"><Input type="tel" value={phone} onChange={(e) => { setPhone(e.target.value); dirty() }} placeholder="+60 12 345 6789" /></Field>
 
