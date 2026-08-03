@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
 import type { Id } from '@/convex/_generated/dataModel'
@@ -166,11 +166,15 @@ function TrackCard({
   )
 }
 
+const RESUME_ACCEPT = '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+const isResumeFile = (f: File) => /\.(pdf|docx?)$/i.test(f.name)
+
 function ApplyModal({
   track,
   fit,
   submitting,
   error,
+  resumeName,
   onClose,
   onSubmit,
 }: {
@@ -178,6 +182,7 @@ function ApplyModal({
   fit: number | null
   submitting: boolean
   error: string | null
+  resumeName: string | null
   onClose: () => void
   onSubmit: (note: string, availability: string, hours: number) => void
 }) {
@@ -186,6 +191,34 @@ function ApplyModal({
   const [hours, setHours] = useState(track.weeklyHours)
   const valid = note.trim().length >= 40
   const dialogRef = useDialog<HTMLDivElement>(onClose)
+
+  // Resume is optional and attaches to the candidate's profile, so the company
+  // sees it with the application. Uploading here replaces any existing resume.
+  const genResumeUrl = useMutation(api.candidates.generateResumeUploadUrl)
+  const setResume = useMutation(api.candidates.setResume)
+  const resumeInputRef = useRef<HTMLInputElement>(null)
+  const [attached, setAttached] = useState<string | null>(resumeName)
+  const [resumeBusy, setResumeBusy] = useState(false)
+  const [resumeError, setResumeError] = useState<string | null>(null)
+
+  const uploadResume = async (file: File) => {
+    if (!isResumeFile(file)) { setResumeError('Attach a PDF or Word document (.pdf, .doc, .docx).'); return }
+    if (file.size > 8 * 1024 * 1024) { setResumeError('That file is over 8 MB.'); return }
+    setResumeBusy(true)
+    setResumeError(null)
+    try {
+      const url = await genResumeUrl()
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file })
+      const { storageId } = (await res.json()) as { storageId: Id<'_storage'> }
+      await setResume({ storageId, fileName: file.name })
+      setAttached(file.name)
+    } catch (e) {
+      setResumeError(errorText(e))
+    } finally {
+      setResumeBusy(false)
+      if (resumeInputRef.current) resumeInputRef.current.value = ''
+    }
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-ink/40 p-0 backdrop-blur-sm sm:items-center sm:p-6" onClick={onClose}>
@@ -244,6 +277,19 @@ function ApplyModal({
                 value={hours}
                 onChange={(e) => setHours(Number(e.target.value))}
               />
+            </Field>
+          </div>
+
+          <div className="mt-4">
+            <Field label="Resume" hint="PDF or Word, optional">
+              <div className="flex flex-wrap items-center gap-3">
+                <Button variant="secondary" size="sm" onClick={() => resumeInputRef.current?.click()} disabled={resumeBusy}>
+                  {resumeBusy ? 'Uploading…' : attached ? 'Replace resume' : 'Attach resume'}
+                </Button>
+                {attached && <span className="truncate text-xs text-ink-soft">{attached}</span>}
+              </div>
+              <input ref={resumeInputRef} type="file" accept={RESUME_ACCEPT} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadResume(f) }} aria-label="Resume file" />
+              {resumeError && <p className="mt-2 text-xs font-medium text-danger">{resumeError}</p>}
             </Field>
           </div>
         </div>
@@ -595,6 +641,7 @@ export default function Marketplace() {
           fit={fitById.get(applyTrack.id) ?? null}
           submitting={submitting}
           error={applyError}
+          resumeName={candidate?.resumeName ?? null}
           onClose={() => setApplyTrack(null)}
           onSubmit={async (note, availability, hours) => {
             setSubmitting(true)

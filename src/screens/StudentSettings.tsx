@@ -1,11 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useMutation, useQuery } from 'convex/react'
 import { api } from '@/convex/_generated/api'
+import type { Id } from '@/convex/_generated/dataModel'
 import { Page, Eyebrow, Card, Button, Field, Input } from '../components/ui'
 import { errorText } from '../components/errors'
 import { SkeletonGrid } from '../components/Skeleton'
+
+const RESUME_ACCEPT = '.pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+const isResumeFile = (f: File) => /\.(pdf|docx?)$/i.test(f.name)
 
 /* ------------------------------------------------------------------ */
 /*  Candidate settings — edit the matchable profile after onboarding.   */
@@ -16,7 +20,16 @@ type Skill = { name: string; level: number }
 export default function StudentSettings() {
   const me = useQuery(api.candidates.current)
   const saveProfile = useMutation(api.candidates.saveProfile)
+  const generateResumeUploadUrl = useMutation(api.candidates.generateResumeUploadUrl)
+  const setResume = useMutation(api.candidates.setResume)
+  const removeResume = useMutation(api.candidates.removeResume)
 
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [phone, setPhone] = useState('')
+  const [resumeBusy, setResumeBusy] = useState(false)
+  const [resumeError, setResumeError] = useState<string | null>(null)
+  const resumeInputRef = useRef<HTMLInputElement>(null)
   const [headline, setHeadline] = useState('')
   const [university, setUniversity] = useState('')
   const [program, setProgram] = useState('')
@@ -33,6 +46,9 @@ export default function StudentSettings() {
 
   useEffect(() => {
     if (me) {
+      setName(me.name ?? '')
+      setEmail(me.email ?? '')
+      setPhone(me.phone ?? '')
       setHeadline(me.headline)
       setUniversity(me.university)
       setProgram(me.program)
@@ -62,6 +78,9 @@ export default function StudentSettings() {
     setError(null)
     try {
       await saveProfile({
+        name: name.trim(),
+        email: email.trim(),
+        phone: phone.trim(),
         headline: headline.trim(),
         university: university.trim(),
         program: program.trim(),
@@ -76,6 +95,24 @@ export default function StudentSettings() {
       setError(errorText(e))
     } finally {
       setSaving(false)
+    }
+  }
+
+  const uploadResume = async (file: File) => {
+    if (!isResumeFile(file)) { setResumeError('Attach a PDF or Word document (.pdf, .doc, .docx).'); return }
+    if (file.size > 8 * 1024 * 1024) { setResumeError('That file is over 8 MB. Please choose a smaller one.'); return }
+    setResumeBusy(true)
+    setResumeError(null)
+    try {
+      const url = await generateResumeUploadUrl()
+      const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file })
+      const { storageId } = (await res.json()) as { storageId: Id<'_storage'> }
+      await setResume({ storageId, fileName: file.name })
+    } catch (e) {
+      setResumeError(errorText(e))
+    } finally {
+      setResumeBusy(false)
+      if (resumeInputRef.current) resumeInputRef.current.value = ''
     }
   }
 
@@ -94,6 +131,28 @@ export default function StudentSettings() {
       ) : (
         <Card className="p-6">
           <div className="grid grid-cols-1 gap-5">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <Field label="Full name"><Input value={name} onChange={(e) => { setName(e.target.value); dirty() }} placeholder="Your name" /></Field>
+              <Field label="Email" hint="optional"><Input type="email" value={email} onChange={(e) => { setEmail(e.target.value); dirty() }} placeholder="you@email.com" /></Field>
+            </div>
+            <Field label="Phone" hint="optional"><Input type="tel" value={phone} onChange={(e) => { setPhone(e.target.value); dirty() }} placeholder="+60 12 345 6789" /></Field>
+
+            <Field label="Resume" hint="PDF or Word, optional">
+              {me?.resumeUrl ? (
+                <div className="flex flex-wrap items-center gap-3">
+                  <a href={me.resumeUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 border border-line-strong bg-paper px-3 py-1.5 text-sm font-semibold text-ink rounded-[2px] transition-colors hover:border-ink">
+                    {me.resumeName || 'View resume'}
+                  </a>
+                  <Button variant="secondary" onClick={() => resumeInputRef.current?.click()} disabled={resumeBusy}>{resumeBusy ? 'Uploading…' : 'Replace'}</Button>
+                  <Button variant="ghost" onClick={() => void removeResume()} disabled={resumeBusy}>Remove</Button>
+                </div>
+              ) : (
+                <Button variant="secondary" onClick={() => resumeInputRef.current?.click()} disabled={resumeBusy}>{resumeBusy ? 'Uploading…' : 'Attach resume'}</Button>
+              )}
+              <input ref={resumeInputRef} type="file" accept={RESUME_ACCEPT} className="hidden" onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadResume(f) }} aria-label="Resume file" />
+              {resumeError && <p className="mt-2 text-xs font-medium text-danger">{resumeError}</p>}
+            </Field>
+
             <Field label="Headline"><Input value={headline} onChange={(e) => { setHeadline(e.target.value); dirty() }} /></Field>
             <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
               <Field label="University"><Input value={university} onChange={(e) => { setUniversity(e.target.value); dirty() }} /></Field>

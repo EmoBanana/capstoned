@@ -299,6 +299,7 @@ export default function StudentMentorship({ onNavigate }: { onNavigate?: (id: st
                       <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${meta.dot}`} aria-hidden="true" />
                       <div>
                         <p className={`text-sm font-semibold leading-snug ${dimmed ? 'text-ink-soft' : 'text-ink'}`}>{task.title}</p>
+                        {task.description && <p className="mt-1 text-xs leading-relaxed text-ink-soft">{task.description}</p>}
                         {task.dueLabel && task.status !== 'submitted' && <p className="mt-1 text-xs font-medium text-gold">{task.dueLabel}</p>}
                       </div>
                     </div>

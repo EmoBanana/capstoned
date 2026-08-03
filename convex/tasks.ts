@@ -40,8 +40,8 @@ export const review = mutation({
 
 /** Mentor adds a new task to a mentee's enrollment. */
 export const add = mutation({
-  args: { enrollmentId: v.id('enrollments'), title: v.string(), dueLabel: v.optional(v.string()) },
-  handler: async (ctx, { enrollmentId, title, dueLabel }) => {
+  args: { enrollmentId: v.id('enrollments'), title: v.string(), description: v.optional(v.string()), dueLabel: v.optional(v.string()) },
+  handler: async (ctx, { enrollmentId, title, description, dueLabel }) => {
     const clean = title.trim()
     if (!clean) throw new ConvexError('Task title required')
     const existing = await ctx.db
@@ -49,7 +49,14 @@ export const add = mutation({
       .withIndex('by_enrollment', (q) => q.eq('enrollmentId', enrollmentId))
       .collect()
     const order = existing.reduce((m, t) => Math.max(m, t.order), -1) + 1
-    return await ctx.db.insert('tasks', { enrollmentId, title: clean, status: 'todo', dueLabel, order })
+    return await ctx.db.insert('tasks', {
+      enrollmentId,
+      title: clean,
+      description: description?.trim() || undefined,
+      status: 'todo',
+      dueLabel,
+      order,
+    })
   },
 })
 
@@ -77,14 +84,16 @@ export const setStatus = mutation({
   },
 })
 
-/** Mentor edits the task itself (its title, and optionally its due label). */
+/** Mentor edits the task itself: its title, its description (the brief), and
+ *  optionally its due label. The mentor's comment lives separately (setNote). */
 export const edit = mutation({
-  args: { taskId: v.id('tasks'), title: v.string(), dueLabel: v.optional(v.string()) },
-  handler: async (ctx, { taskId, title, dueLabel }) => {
+  args: { taskId: v.id('tasks'), title: v.string(), description: v.optional(v.string()), dueLabel: v.optional(v.string()) },
+  handler: async (ctx, { taskId, title, description, dueLabel }) => {
     const clean = title.trim()
     if (!clean) throw new ConvexError('Task title required')
     await ctx.db.patch(taskId, {
       title: clean,
+      ...(description !== undefined ? { description: description.trim() || undefined } : {}),
       ...(dueLabel !== undefined ? { dueLabel: dueLabel.trim() || undefined } : {}),
     })
   },

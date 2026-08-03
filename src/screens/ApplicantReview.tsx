@@ -64,6 +64,8 @@ type Applicant = {
   university: string
   program: string
   animalKey: string
+  resumeUrl: string | null
+  resumeName: string | null
   reliability: number
   reliabilityDisplay: number | null
 }
@@ -432,10 +434,15 @@ export default function ApplicantReview() {
                             <tr className="border-b border-line bg-paper/40">
                               <td colSpan={5} className="px-5 pb-5 pt-0">
                                 <div className="rounded-[2px] border border-line bg-white p-4">
-                                  <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-ink-soft">
+                                  <div className="flex flex-wrap items-center gap-x-6 gap-y-1 text-xs text-ink-soft">
                                     <span><span className="font-semibold text-ink-faint">Availability:</span> {a.availability || '—'}</span>
                                     <span><span className="font-semibold text-ink-faint">Commits:</span> {a.hoursPerWeek || '—'} hrs/week</span>
                                     <span><span className="font-semibold text-ink-faint">Reliability:</span> {a.reliabilityDisplay === null ? 'New' : `${a.reliabilityDisplay}%`}</span>
+                                    {a.resumeUrl && (
+                                      <a href={a.resumeUrl} target="_blank" rel="noreferrer" className="font-semibold text-slate underline decoration-slate/40 underline-offset-2 transition-colors hover:text-ink">
+                                        Resume{a.resumeName ? ` · ${a.resumeName}` : ''}
+                                      </a>
+                                    )}
                                   </div>
                                   <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.1em] text-ink-faint">Why they're a fit</p>
                                   <p className="mt-1 text-sm leading-relaxed text-ink">{a.note || 'No note provided.'}</p>

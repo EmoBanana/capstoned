@@ -106,6 +106,11 @@ export default defineSchema({
     reliabilityScore: v.number(),
     // False/unset until the student finishes onboarding; gates matching + apply.
     profileComplete: v.optional(v.boolean()),
+    // Contact + an optional attached resume (pdf/docx in Convex file storage).
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    resumeStorageId: v.optional(v.id('_storage')),
+    resumeName: v.optional(v.string()),
   }).index('by_user', ['userId']),
 
   applications: defineTable({
@@ -159,6 +164,9 @@ export default defineSchema({
   tasks: defineTable({
     enrollmentId: v.id('enrollments'),
     title: v.string(),
+    // The task's own brief (what to do). Distinct from mentorNote, which is the
+    // mentor's feedback comment on the task. The two are kept separate.
+    description: v.optional(v.string()),
     status: v.union(
       v.literal('todo'),
       v.literal('in-progress'),

@@ -231,6 +231,8 @@ export const forOrg = query({
           university: c?.university ?? '',
           program: c?.program ?? '',
           animalKey: c?.animalKey ?? 'owl',
+          resumeUrl: c?.resumeStorageId ? await ctx.storage.getUrl(c.resumeStorageId) : null,
+          resumeName: c?.resumeName ?? null,
           reliability: c?.reliabilityScore ?? 0,
           reliabilityDisplay: await reliabilityDisplay(ctx, 'candidate', a.candidateId, c?.reliabilityScore ?? 0, false),
         }
@@ -252,8 +254,9 @@ async function seedEnrollmentTasks(
     await ctx.db.insert('tasks', {
       enrollmentId,
       title: m.title,
+      // The milestone detail is the task brief, not a mentor comment.
+      description: m.detail,
       status: 'todo',
-      mentorNote: m.detail,
       order: order++,
     })
   }

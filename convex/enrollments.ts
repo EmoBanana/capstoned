@@ -70,7 +70,7 @@ async function tasksFor(ctx: QueryCtx, enrollmentId: Id<'enrollments'>) {
     .collect()
   return tasks
     .sort((a, b) => a.order - b.order)
-    .map((t) => ({ id: t._id as string, title: t.title, status: t.status, dueLabel: t.dueLabel, mentorNote: t.mentorNote }))
+    .map((t) => ({ id: t._id as string, title: t.title, description: t.description, status: t.status, dueLabel: t.dueLabel, mentorNote: t.mentorNote }))
 }
 
 /** Enrolled mentees for an org's track (recruiter master-detail). */
